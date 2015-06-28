@@ -22,5 +22,5 @@ bin_PROGRAMS += git-evtag
 git_evtag_SOURCES = src/git-evtag.c \
 	$(NULL)
 
-git_evtag_CFLAGS = $(AM_CFLAGS) $(BUILDDEP_LIBGIT_GLIB_CFLAGS)  -I$(srcdir)/src -I$(srcdir)/libglnx
+git_evtag_CFLAGS = $(AM_CFLAGS) $(BUILDDEP_LIBGIT_GLIB_CFLAGS)  -I$(srcdir)/src
 git_evtag_LDADD = $(BUILDDEP_LIBGIT_GLIB_LIBS)
