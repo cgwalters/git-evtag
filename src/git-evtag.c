@@ -25,7 +25,7 @@
 #include <string.h>
 #include <errno.h>
 
-#define EVTAG_CONTENTS_SHA512 "Git-EVTag-Contents-SHA512:"
+#define EVTAG_SHA512 "Git-EVTag-SHA512:"
 
 static gboolean opt_print_only;
 static gboolean opt_verbose;
@@ -194,9 +194,9 @@ verify_line (const char *expected_checksum,
   gboolean ret = FALSE;
   const char *provided_checksum;
 
-  g_assert (g_str_has_prefix (line, EVTAG_CONTENTS_SHA512));
+  g_assert (g_str_has_prefix (line, EVTAG_SHA512));
 
-  provided_checksum = line + strlen (EVTAG_CONTENTS_SHA512);
+  provided_checksum = line + strlen (EVTAG_SHA512);
   provided_checksum += strspn (provided_checksum, " \t");
   if (strcmp (provided_checksum, expected_checksum) != 0)
     {
@@ -214,11 +214,48 @@ verify_line (const char *expected_checksum,
 static char *
 get_stats (struct EvTag *self)
 {
-  return g_strdup_printf ("# Git-EVTag-Stats: commits=%u trees=%u blobs=%u bytes=%" G_GUINT64_FORMAT "",
+  return g_strdup_printf ("# git-evtag comment: commits=%u trees=%u blobs=%u bytes=%" G_GUINT64_FORMAT "",
                           self->n_commits,
                           self->n_trees,
                           self->n_blobs,
                           self->total_object_size);
+}
+
+static gboolean
+check_file_has_evtag (const char *path,
+                      gboolean   *out_have_evtag,
+                      GError    **error)
+{
+  gboolean ret = FALSE;
+  char *message = NULL;
+  const char *p;
+  const char *nl;
+  gboolean found = FALSE;
+
+  if (!g_file_get_contents (path, &message, NULL, error))
+    goto out;
+
+  p = message;
+  while (TRUE)
+    {
+      nl = strchr (p, '\n');
+
+      if (g_str_has_prefix (p, EVTAG_SHA512))
+        {
+          found = TRUE;
+          break;
+        }
+
+      if (!nl)
+        break;
+      p = nl + 1;
+    }
+
+  ret = TRUE;
+  *out_have_evtag = found;
+ out:
+  g_free (message);
+  return ret;
 }
 
 int
@@ -235,6 +272,8 @@ main (int    argc,
   char commit_oid_hexstr[GIT_OID_HEXSZ+1];
   GOptionContext *context;
   int r;
+  guint64 checksum_start_time;
+  guint64 checksum_end_time;
   const char *tagname;
   const char *rev = NULL;
   struct EvTag self = { NULL, };
@@ -320,8 +359,10 @@ main (int    argc,
   git_oid_fmt (commit_oid_hexstr, git_object_id (obj));
   commit_oid_hexstr[sizeof(commit_oid_hexstr)-1] = '\0';
 
+  checksum_start_time = g_get_monotonic_time ();
   if (!checksum_commit_contents (&self, commit, cancellable, error))
     goto out;
+  checksum_end_time = g_get_monotonic_time ();
 
   if (opt_verify)
     {
@@ -345,7 +386,7 @@ main (int    argc,
         {
           nl = strchr (message, '\n');
 
-          if (g_str_has_prefix (message, EVTAG_CONTENTS_SHA512))
+          if (g_str_has_prefix (message, EVTAG_SHA512))
             {
               char *line;
               if (nl)
@@ -358,7 +399,6 @@ main (int    argc,
               if (!verify_line (expected_checksum, line, commit_oid_hexstr, error))
                 goto out;
               
-              if (opt_verbose)
                 {
                   char *stats = get_stats (&self);
                   g_print ("%s\n", stats);
@@ -378,20 +418,16 @@ main (int    argc,
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Failed to find %s in tag message",
-                       EVTAG_CONTENTS_SHA512);
+                       EVTAG_SHA512);
           goto out;
         }
     }
   else if (opt_print_only)
     {
-      if (opt_verbose)
-        {
-          char *stats = get_stats (&self);
-          g_print ("%s\n", stats);
-          g_free (stats);
-        }
-        
-      g_print ("%s %s\n", EVTAG_CONTENTS_SHA512, g_checksum_get_string (self.checksum));
+      char *stats = get_stats (&self);
+      g_print ("%s\n", stats);
+      g_free (stats);
+      g_print ("%s %s\n", EVTAG_SHA512, g_checksum_get_string (self.checksum));
     }
   else
     {
@@ -401,22 +437,23 @@ main (int    argc,
       char *editor_child_argv[] = { NULL, NULL, NULL };
       char *gittag_child_argv[] = { "git", "tag", "-s", "-F", NULL, NULL, NULL, NULL };
       GString *buf = g_string_new ("\n\n");
+      gboolean have_evtag;
 
       tmpfd = g_file_open_tmp ("git-evtag-XXXXXX.md", &temppath, error);
       if (tmpfd < 0)
         goto out;
       (void) close (tmpfd);
       
-      g_string_append (buf, "\n\n");
+      g_string_append_printf (buf, "# git-evtag comment: Computed checksum in %0.1fs\n",
+                              (double)(checksum_end_time - checksum_start_time) / (double) G_USEC_PER_SEC);
 
-      if (opt_verbose)
-        {
-          char *stats = get_stats (&self);
-          g_string_append (buf, stats);
-          g_string_append_c (buf, '\n');
-          g_free (stats);
-        }
-      g_string_append (buf, EVTAG_CONTENTS_SHA512);
+      {
+        char *stats = get_stats (&self);
+        g_string_append (buf, stats);
+        g_string_append_c (buf, '\n');
+        g_free (stats);
+      }
+      g_string_append (buf, EVTAG_SHA512);
       g_string_append_c (buf, ' ');
       g_string_append (buf, g_checksum_get_string (self.checksum));
       
@@ -434,6 +471,16 @@ main (int    argc,
                                        G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN,
                                        error))
         goto out;
+
+      if (!check_file_has_evtag (temppath, &have_evtag, error))
+        goto out;
+
+      if (!have_evtag)
+        {
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Aborting tag due to deleted Git-EVTag line"); 
+          goto out;
+        }
 
       gittag_child_argv[4] = temppath;
       gittag_child_argv[5] = (char*)tagname;
