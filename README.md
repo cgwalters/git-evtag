@@ -1,8 +1,8 @@
 # git-evtag
 
 `git-evtag` can be used as a drop-in replacement for `git-tag -s`.  It
-will generate a strong checksum over the commit, tree, and blobs it
-references.
+will generate a strong checksum (called `Git-EVTag-SHA512`) over the
+commit, tree, and blobs it references.
 
 Git mailing list thread: http://permalink.gmane.org/gmane.comp.version-control.git/264533
 
@@ -34,37 +34,43 @@ Successfully verified: Git-EVTag-SHA512: b05f10f9adb0eff352d90938588834508d33fdf
 ### Replacing tarballs
 
 This is similar to what project distributors often accomplish by using
-`git archive` or `make dist` to generate a tarball, and then
-checksumming that, and usually providing a GPG signature.
+`git archive`, or `make dist`, or similar tools to generate a tarball,
+and then checksumming that, and (ideally) providing a GPG signature
+covering it.
 
-The advantage `git-evtag` has over this is that no out of band
-distribution mechanism is necessary - git already supports GPG
-signatures, and with this project, we now have a single checksum over
-the complete source objects for the target commit (+ trees + blobs).
+The problem with `git archive` and `make dist` is that tarballs (and
+other tools like zip files) are not easily reproducible *exactly* from
+a git repository commit.  The authors of git reserve the right to
+change the file format output by `git archive` in the future.  And
+`make dist` has many other reproducibility issues beyond that.
+
+What `git-evtag` allows is implementing a similar model with git
+itself, computing a strong checksum over the complete source objects for
+the target commit (+ trees + blobs).
+
+Then, no out of band distribution mechanism is necessary - git already
+supports GPG signatures for tags.
 
 (And if you want to avoid downloading the entire history, that's what
- `git clone --depth=1` is for.)
+`git clone --depth=1` is for.)
 
 ### Git and SHA1
 
 Git uses a modified Merkle tree with SHA1, which means that if an
-attacker managed to create a SHA1 collision for a source file object,
-it would affect all revisions and checkouts.
+attacker managed to create a SHA1 collision for a source file object
+(git blob), it would affect all revisions and checkouts.
 
 In contrast, `Git-EVTag-SHA512` covers the entirety of a single
 commit.  The algorithm is:
 
  - Add commit object to checksum
  - Add commit root tree to checksum
- - Walk tree recursively, checksumming each tree and blob referenced
-
-Unlike `git archive`, which might change format in the future and
-break checksums, the core git object format is fixed.
+ - Walk tree recursively, add to checksum each tree and blob referenced
 
 This strong checksum then helps obviate the SHA1 weakness concerns of
-git for source distribution.  The author of this tool believes that
-today, GPG signed git tags are fairly secure, especially if one is
-careful to ensure transport integrity (e.g. pinned TLS certificates
+git for source distribution.  Now, the author of this tool believes
+that today, GPG signed git tags are fairly secure, especially if one
+is careful to ensure transport integrity (e.g. pinned TLS certificates
 from the origin).
 
 But while at the time of this writing, no public SHA1 collision is
@@ -72,8 +78,11 @@ known, there are attacks against reduced round SHA1.  We expect git
 repositories to be used for many, many years to come.  It makes a lot
 of sense to take additional steps now to add security.
 
-And most importantly, it's quite inexpensive to compute an additional
-(strong SHA512) checksum at `git tag` time that covers all of a
-commit's contents at once.  The cost/benefit of other approaches such
-as forking git with a different checksum algorithm don't appear to be
-worth it.
+And most importantly, it's quite inexpensive and practical to compute
+`Git-EVTag-SHA512` once per tag/release creation.
+
+At the time of this writing, on the Linux kernel (a large project by
+most standards), it takes about 5 seconds to compute on this author's
+laptop.  On most smaller projects, it's completely negligible.
+
+
