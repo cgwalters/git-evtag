@@ -88,11 +88,16 @@ static void
 checksum_odb_object (struct EvTag  *self,
                      git_odb_object *object)
 {
+  git_otype otype = git_odb_object_type (object);
+  const char *otypestr = git_object_type2string (otype);
   size_t size = git_odb_object_size (object);
+  char *header;
 
-  g_checksum_update (self->checksum, git_odb_object_data (object), size);
+  header = g_strdup_printf ("%s %" G_GUINT64_FORMAT, otypestr, size);
+  g_checksum_update (self->checksum, (guint8*)header, strlen (header));
+  g_free (header);
 
-  switch (git_odb_object_type (object))
+  switch (otype)
     {
     case GIT_OBJ_BLOB:
       self->n_blobs++;
@@ -106,6 +111,8 @@ checksum_odb_object (struct EvTag  *self,
     default:
       g_assert_not_reached ();
     }
+
+  g_checksum_update (self->checksum, git_odb_object_data (object), size);
 
   self->total_object_size += size;
 }
