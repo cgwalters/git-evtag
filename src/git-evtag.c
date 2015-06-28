@@ -24,11 +24,15 @@
 #include <gio/gio.h>
 #include <string.h>
 
+#define EVTAG_CONTENTS_SHA512 "Git-EVTag-Contents-SHA512:"
+
 static gboolean opt_print_only = TRUE;
 static gboolean opt_verbose = FALSE;
+static char *opt_verify_line;
 
 static GOptionEntry option_entries[] = {
   { "print-only", 0, 0, G_OPTION_ARG_NONE, &opt_print_only, "Don't create a tag, just compute and print evtag data", NULL },
+  { "verify-line", 0, 0, G_OPTION_ARG_STRING, &opt_verify_line, "Validate the provided Git-EVTag", NULL },
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Print statistics on what we're hashing", NULL },
   { NULL }
 };
@@ -219,8 +223,36 @@ main (int    argc,
 
   if (!checksum_commit_contents (&self, commit, cancellable, error))
     goto out;
-  
-  if (opt_print_only)
+
+  if (opt_verify_line)
+    {
+      const char *provided_checksum;
+      const char *expected_checksum;
+
+      g_strchomp (opt_verify_line);
+
+      if (!g_str_has_prefix (opt_verify_line, EVTAG_CONTENTS_SHA512))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Invalid input '%s', expecting content starting with %s",
+                       opt_verify_line, EVTAG_CONTENTS_SHA512);
+          goto out;
+        }
+
+      expected_checksum = g_checksum_get_string (self.checksum);
+      
+      provided_checksum = opt_verify_line + strlen (EVTAG_CONTENTS_SHA512);
+      provided_checksum += strspn (provided_checksum, " \t");
+      if (strcmp (provided_checksum, expected_checksum) != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid %s, actual checksum of %s is %s",
+                       opt_verify_line, rev, expected_checksum);
+          goto out;
+        }
+
+      g_print ("Successfully verified: %s\n", opt_verify_line);
+    }
+  else if (opt_print_only)
     {
       if (opt_verbose)
         g_print ("# Git-EVTag-Stats: commits=%u trees=%u blobs=%u bytes=%" G_GUINT64_FORMAT "\n",
