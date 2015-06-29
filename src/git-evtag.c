@@ -94,7 +94,8 @@ checksum_odb_object (struct EvTag  *self,
   char *header;
 
   header = g_strdup_printf ("%s %" G_GUINT64_FORMAT, otypestr, size);
-  g_checksum_update (self->checksum, (guint8*)header, strlen (header));
+  /* Also include the trailing NUL byte */
+  g_checksum_update (self->checksum, (guint8*)header, strlen (header) + 1);
   g_free (header);
 
   switch (otype)
