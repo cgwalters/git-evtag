@@ -25,7 +25,7 @@
 #include <string.h>
 #include <errno.h>
 
-#define EVTAG_SHA512 "Git-EVTag-SHA512:"
+#define EVTAG_SHA512 "Git-EVTag-v0-SHA512:"
 
 static gboolean opt_print_only;
 static gboolean opt_verbose;

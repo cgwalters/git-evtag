@@ -1,19 +1,22 @@
 # git-evtag
 
 `git-evtag` can be used as a drop-in replacement for `git-tag -s`.  It
-will generate a strong checksum (called `Git-EVTag-SHA512`) over the
+will generate a strong checksum (called `Git-EVTag-v0-SHA512`) over the
 commit, tree, and blobs it references.
 
-Git mailing list thread: http://permalink.gmane.org/gmane.comp.version-control.git/264533
+Git mailing list thread:
+
+ - permalink: http://permalink.gmane.org/gmane.comp.version-control.git/264533
+ - comments: http://comments.gmane.org/gmane.comp.version-control.git/264533
 
 ### Using git-evtag
 
 Create a new `v2015.10` tag, covering the `HEAD` revision with GPG
-signature and `Git-EVTag-SHA512`:
+signature and `Git-EVTag-v0-SHA512`:
 
 ```
 $ git-evtag v2015.10
- ( type your tag message, note a Git-EVTag-SHA512 line in the message )
+ ( type your tag message, note a Git-EVTag-v0-SHA512 line in the message )
 $ git show v2015.10
  ( Note signature covered by PGP signature )
 ```
@@ -28,7 +31,7 @@ gpg: Good signature from "Colin Walters <walters@redhat.com>" [ultimate]
 gpg:                 aka "Colin Walters <walters@verbum.org>" [ultimate]
 Primary key fingerprint: 1CEC 7A9D F7DA 85AB EF84  3DC0 A866 D7CC AE08 7291
      Subkey fingerprint: AB92 8A9C F8DD 0629 09C3  7BBD DC45 FD59 21C1 3F0B
-Successfully verified: Git-EVTag-SHA512: b05f10f9adb0eff352d90938588834508d33fdfcedbcfc332999ee397efa321d1f49a539f1b82f024111a281c1f441002e7f536b06eb04d41857b01636f6f268
+Successfully verified: Git-EVTag-v0-SHA512: b05f10f9adb0eff352d90938588834508d33fdfcedbcfc332999ee397efa321d1f49a539f1b82f024111a281c1f441002e7f536b06eb04d41857b01636f6f268
 ```
 
 ### Replacing tarballs
@@ -60,7 +63,7 @@ Git uses a modified Merkle tree with SHA1, which means that if an
 attacker managed to create a SHA1 collision for a source file object
 (git blob), it would affect all revisions and checkouts.
 
-In contrast, `Git-EVTag-SHA512` covers the entirety of a single
+In contrast, `Git-EVTag-v0-SHA512` covers the entirety of a single
 commit.  The algorithm is:
 
  - Add commit object to checksum
@@ -79,7 +82,7 @@ repositories to be used for many, many years to come.  It makes a lot
 of sense to take additional steps now to add security.
 
 And most importantly, it's quite inexpensive and practical to compute
-`Git-EVTag-SHA512` once per tag/release creation.
+`Git-EVTag-v0-SHA512` once per tag/release creation.
 
 At the time of this writing, on the Linux kernel (a large project by
 most standards), it takes about 5 seconds to compute on this author's
