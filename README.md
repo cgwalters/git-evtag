@@ -44,14 +44,17 @@ covering it.
 The problem with `git archive` and `make dist` is that tarballs (and
 other tools like zip files) are not easily reproducible *exactly* from
 a git repository commit.  The authors of git reserve the right to
-change the file format output by `git archive` in the future.  And
-`make dist` has many other reproducibility issues beyond that.
+change the file format output by `git archive` in the future.
+
+This means that the checksum is not reproducible, which makes it much
+more difficult to reliably verify that a generated tarball is exactly
+the same as a particular git commit.
 
 What `git-evtag` allows is implementing a similar model with git
 itself, computing a strong checksum over the complete source objects for
 the target commit (+ trees + blobs).
 
-Then, no out of band distribution mechanism is necessary - git already
+Then no out of band distribution mechanism is necessary - git already
 supports GPG signatures for tags.
 
 (And if you want to avoid downloading the entire history, that's what
@@ -88,4 +91,26 @@ At the time of this writing, on the Linux kernel (a large project by
 most standards), it takes about 5 seconds to compute on this author's
 laptop.  On most smaller projects, it's completely negligible.
 
+### Aside: other aspects of tarballs
 
+This project is just addressing one small part of the larger
+git/tarball question.  Anything else is out of scope, but a brief
+discussion of other aspects is included below.
+
+Historically, many projects include additional content in tarballs.
+For example, the GNU Autotools pregenerate a `configure` script from
+`configure.ac` and the like.  Other projects don't include
+translations in git, but merge them out of band when generating
+tarballs.
+
+There are many other things like this, and they all harm
+reproducibility and continuous integration/delivery.
+
+For example, while many of my projects use Autotools, I simply have
+downstream authors run `autogen.sh`.  It works just fine - the
+autotools are no longer changing often, and many downstreams want to
+do it anyways.
+
+For the translation issue, note that bad translations can actually
+crash one's application.  If they're part of the git repository, they
+can be more easily tested as a unit continuously.
