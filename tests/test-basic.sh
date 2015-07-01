@@ -1,4 +1,6 @@
-# Copyright (C) 2014 Colin Walters <walters@verbum.org>
+#!/bin/bash
+#
+# Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -15,22 +17,22 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-include Makefile-decls.am
+set -e
 
-privdatadir=$(pkglibdir)
+echo "1..1"
 
-ACLOCAL_AMFLAGS += -I m4 ${ACLOCAL_FLAGS}
-AM_CPPFLAGS += -DDATADIR='"$(datadir)"' \
-	-DLIBEXECDIR='"$(libexecdir)"' \
-	-DLOCALEDIR=\"$(datadir)/locale\"
-AM_CFLAGS += $(WARN_CFLAGS)
+. $(dirname $0)/libtest.sh
 
-include $(INTROSPECTION_MAKEFILE)
+setup_test_repository
+echo "ok setup"
 
-girdir = $(pkgdatadir)/gir-1.0
-gir_DATA = $(INTROSPECTION_GIRS)
-typelibdir = $(pkglibdir)/girepository-1.0
-typelib_DATA = $(gir_DATA:.gir=.typelib)
-
-include Makefile-git-evtag.am
-include Makefile-tests.am
+cd ${test_tmpdir}
+cat > editor.sh <<EOF
+#!/bin/sh
+echo Release 2015.1 > $$1
+EOF
+chmod a+x editor.sh
+cd coolproject
+env EDITOR=${test_tmpdir}/editor.sh git evtag -u 472CDAFA v2015.1
+env EDITOR=${test_tmpdir}/editor.sh git evtag --verify v2015.1
+echo "ok tag + verify"

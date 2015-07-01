@@ -32,6 +32,12 @@ LT_INIT([disable-static])
 PKG_PROG_PKG_CONFIG
 PKG_CHECK_MODULES(BUILDDEP_LIBGIT_GLIB, [libgit2 gio-2.0])
 
+AC_ARG_ENABLE(installed_tests,
+              AS_HELP_STRING([--enable-installed-tests],
+                             [Install test programs (default: no)]),,
+              [enable_installed_tests=no])
+AM_CONDITIONAL(BUILDOPT_INSTALL_TESTS, test x$enable_installed_tests = xyes)
+
 AC_CONFIG_FILES([
         Makefile
 ])
@@ -39,4 +45,6 @@ AC_OUTPUT
 
 echo "
     $PACKAGE $VERSION
+
+    installed tests:                         $enable_installed_tests
 "
