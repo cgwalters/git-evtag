@@ -30,11 +30,13 @@
 static gboolean opt_print_only;
 static gboolean opt_verbose;
 static gboolean opt_verify;
+static char *opt_keyid;
 
 static GOptionEntry option_entries[] = {
   { "print-only", 0, 0, G_OPTION_ARG_NONE, &opt_print_only, "Don't create a tag, just compute and print evtag data", NULL },
   { "verify", 0, 0, G_OPTION_ARG_NONE, &opt_verify, "Validate the provided tag", NULL },
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Print statistics on what we're hashing", NULL },
+  { "local-user", 'u', 0, G_OPTION_ARG_STRING, &opt_keyid, "Use the given GPG KEYID", "KEYID" },
   { NULL }
 };
 
@@ -443,7 +445,7 @@ main (int    argc,
       int tmpfd;
       char *temppath;
       char *editor_child_argv[] = { NULL, NULL, NULL };
-      char *gittag_child_argv[] = { "git", "tag", "-s", "-F", NULL, NULL, NULL, NULL };
+      GPtrArray *gittag_child_argv = g_ptr_array_new ();
       GString *buf = g_string_new ("\n\n");
       gboolean have_evtag;
 
@@ -489,14 +491,25 @@ main (int    argc,
                                "Aborting tag due to deleted Git-EVTag line"); 
           goto out;
         }
-
-      gittag_child_argv[4] = temppath;
-      gittag_child_argv[5] = (char*)tagname;
-      gittag_child_argv[6] = (char*)commit_oid_hexstr;
-      if (!spawn_sync_require_success (gittag_child_argv,
+      
+      g_ptr_array_add (gittag_child_argv, "git");
+      g_ptr_array_add (gittag_child_argv, "tag");
+      g_ptr_array_add (gittag_child_argv, "-s");
+      if (opt_keyid)
+        {
+          g_ptr_array_add (gittag_child_argv, "--local-user");
+          g_ptr_array_add (gittag_child_argv, opt_keyid);
+        }
+      g_ptr_array_add (gittag_child_argv, "-F");
+      g_ptr_array_add (gittag_child_argv, temppath);
+      g_ptr_array_add (gittag_child_argv, (char*)tagname);
+      g_ptr_array_add (gittag_child_argv, (char*)commit_oid_hexstr);
+      g_ptr_array_add (gittag_child_argv, NULL);
+      if (!spawn_sync_require_success ((char**)gittag_child_argv->pdata,
                                        G_SPAWN_SEARCH_PATH,
                                        error))
         goto out;
+      g_ptr_array_free (gittag_child_argv, TRUE);
     }
 
  out:
