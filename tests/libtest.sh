@@ -87,6 +87,15 @@ assert_file_empty() {
     fi
 }
 
+gitcommit_reset_time() {
+    TSCOUNTER=1436222301
+}
+gitcommit_inctime() {
+    TSCOUNTER=$(($TSCOUNTER + 1))
+    TSV="$TSCOUNTER +0000" 
+    env GIT_AUTHOR_DATE="$TSV" GIT_COMMITTER_DATE="$TSV" git commit "$@"
+}
+
 setup_test_repository () {
     oldpwd=`pwd`
 
@@ -94,13 +103,51 @@ setup_test_repository () {
     mkdir coolproject
     cd coolproject
     git init
+    gitcommit_reset_time
     echo 'So cool!' > README.md
-    git add README.md
-    git commit -a -m 'Initial commit'
+    git add .
+    gitcommit_inctime -a -m 'Initial commit'
     mkdir src
     echo 'printf("hello world")' > src/cool.c
-    git add src
-    git commit -a -m 'Add C source'
+    git add .
+    gitcommit_inctime -a -m 'Add C source'
+
+    cd ${test_tmpdir}
+    mkdir -p repos/coolproject
+    cd repos/coolproject && git init --bare
+    cd ${test_tmpdir}/coolproject
+    git remote add origin file://${test_tmpdir}/repos/coolproject
+    git push --set-upstream origin master
+
+    cd ${test_tmpdir}
+    mkdir subproject
+    cd subproject
+    git init
+    echo 'this is libsub.c' > libsub.c
+    echo 'An example submodule' > README.md
+    git add .
+    git commit -a -m 'init'
+    mkdir src
+    mv libsub.c src
+    echo 'an update to libsub.c, now in src/' > src/libsub.c
+    git commit -a -m 'an update'
+
+    cd ${test_tmpdir}
+    mkdir -p repos/subproject
+    cd repos/subproject && git init --bare
+    cd ${test_tmpdir}/subproject
+    git remote add origin file://${test_tmpdir}/repos/subproject
+    git push --set-upstream origin master
+
+    cd ${test_tmpdir}/coolproject
+    git submodule add file://${test_tmpdir}/repos/subproject subproject 
+    git add subproject
+    echo '#include subproject/src/libsub.c' >> src/cool.c
+    git commit -a -m 'Add libsub'
+
+    cd ${test_tmpdir}
+    rm coolproject -rf
+    rm subproject -rf
 
     cd $oldpwd
 }
