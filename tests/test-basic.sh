@@ -32,11 +32,12 @@ echo "ok setup"
 
 git clone repos/coolproject
 cd coolproject
+git submodule update --init
 with_editor_script git evtag -u 472CDAFA v2015.1
 git show refs/tags/v2015.1 > tag.txt
-assert_file_has_content tag.txt 'Git-EVTag-v0-SHA512: 9218351b9b478c80ca8da6b187da82b10d041f5907731a5274fa46b7674d9d39f3ed81365966f2c5af09ef9d72079aea7c32c4442ee954febde00ac1e3faf26'
+assert_file_has_content tag.txt 'Git-EVTag-v0-SHA512: 96f610335e23ea421238dc92325f369406f25de0c3c368dce90f31d2d943556b8fb009cdbcc54bebc4e341917ca81cd51733372153ea2103450759bc90e6e8d8'
 with_editor_script git evtag --verify v2015.1 | tee verify.out
-assert_file_has_content verify.out 'Successfully verified: Git-EVTag-v0-SHA512: 9218351b9b478c80ca8da6b187da82b10d041f5907731a5274fa46b7674d9d39f3ed81365966f2c5af09ef9d72079aea7c32c4442ee954febde00ac1e3faf26'
+assert_file_has_content verify.out 'Successfully verified: Git-EVTag-v0-SHA512: 96f610335e23ea421238dc92325f369406f25de0c3c368dce90f31d2d943556b8fb009cdbcc54bebc4e341917ca81cd51733372153ea2103450759bc90e6e8d8'
 rm -f tag.txt
 rm -f verify.out
 echo "ok tag + verify"
@@ -46,6 +47,7 @@ cd ${test_tmpdir}
 rm coolproject -rf
 git clone repos/coolproject
 cd coolproject
+git submodule update --init
 echo 'super cool' > src/cool.c
 if with_editor_script git evtag -u 472CDAFA v2015.1 2>err.txt; then
     assert_not_reached "expected failure due to dirty tree"
@@ -63,6 +65,7 @@ cd ${test_tmpdir}
 rm coolproject -rf
 git clone repos/coolproject
 cd coolproject
+git submodule update --init
 if with_editor_script git evtag -u 472CDAFA v2015.1 HEAD^ 2>err.txt; then
     assert_not_reached 'Expected failure due to non HEAD'
 fi
@@ -74,6 +77,7 @@ cd ${test_tmpdir}
 rm coolproject -rf
 git clone repos/coolproject
 cd coolproject
+git submodule update --init
 with_editor_script git evtag -u 472CDAFA v2015.1
 git checkout -q HEAD^
 if git evtag --verify v2015.1 2>err.txt; then

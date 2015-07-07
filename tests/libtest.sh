@@ -126,12 +126,11 @@ setup_test_repository () {
     echo 'this is libsub.c' > libsub.c
     echo 'An example submodule' > README.md
     git add .
-    git commit -a -m 'init'
+    gitcommit_inctime -a -m 'init'
     mkdir src
     mv libsub.c src
     echo 'an update to libsub.c, now in src/' > src/libsub.c
-    git commit -a -m 'an update'
-
+    gitcommit_inctime -a -m 'an update'
     cd ${test_tmpdir}
     mkdir -p repos/subproject
     cd repos/subproject && git init --bare
@@ -143,7 +142,8 @@ setup_test_repository () {
     git submodule add file://${test_tmpdir}/repos/subproject subproject 
     git add subproject
     echo '#include subproject/src/libsub.c' >> src/cool.c
-    git commit -a -m 'Add libsub'
+    gitcommit_inctime -a -m 'Add libsub'
+    git push
 
     cd ${test_tmpdir}
     rm coolproject -rf
