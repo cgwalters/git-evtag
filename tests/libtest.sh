@@ -151,3 +151,16 @@ setup_test_repository () {
 
     cd $oldpwd
 }
+
+create_editor_script() {
+    cat >${test_tmpdir}/editor.sh <<EOF
+#!/bin/sh
+buf=\$(cat \$1)
+(echo $1 && echo "\$buf") > \$1
+EOF
+    chmod a+x editor.sh
+}
+
+with_editor_script() {
+    env EDITOR=${test_tmpdir}/editor.sh "$@"
+}

@@ -268,6 +268,27 @@ check_file_has_evtag (const char *path,
   return ret;
 }
 
+static int
+status_cb (const char *path, unsigned int status_flags, void *payload)
+{
+  int r = 1;
+  struct TreeWalkData *twdata = payload;
+
+  if (status_flags != 0)
+    {
+      g_assert (!twdata->caught_error);
+      twdata->caught_error = TRUE;
+      g_set_error (twdata->error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Attempting to tag or verify dirty tree (%s); use --force-unclean to override",
+                   path);
+      goto out;
+    }
+
+  r = 0;
+ out:
+  return r;
+}
+
 int
 main (int    argc,
       char **argv)
@@ -286,6 +307,7 @@ main (int    argc,
   guint64 checksum_end_time;
   const char *tagname;
   const char *rev = NULL;
+  git_status_options statusopts = GIT_STATUS_OPTIONS_INIT;
   struct EvTag self = { NULL, };
   
   /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
@@ -335,6 +357,19 @@ main (int    argc,
   r = git_repository_odb (&self.db, repo);
   if (!handle_libgit_ret (r, error))
     goto out;
+
+  r = git_status_init_options (&statusopts, GIT_STATUS_OPTIONS_VERSION);
+  if (!handle_libgit_ret (r, error))
+    goto out;
+
+  {
+    struct TreeWalkData twdata = { FALSE, &self, cancellable, error };
+    r = git_status_foreach_ext (repo, &statusopts, status_cb, &twdata);
+    if (twdata.caught_error)
+      goto out;
+    if (!handle_libgit_ret (r, error))
+      goto out;
+  }
 
   if (opt_verify)
     {
