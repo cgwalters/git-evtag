@@ -59,3 +59,27 @@ git evtag --verify v2015.1
 echo 'ok no tag on dirty tree'
 
 
+cd ${test_tmpdir}
+rm coolproject -rf
+git clone repos/coolproject
+cd coolproject
+if with_editor_script git evtag -u 472CDAFA v2015.1 HEAD^ 2>err.txt; then
+    assert_not_reached 'Expected failure due to non HEAD'
+fi
+assert_file_has_content err.txt "Target.*is not HEAD"
+echo 'ok no tag on non-HEAD'
+
+
+cd ${test_tmpdir}
+rm coolproject -rf
+git clone repos/coolproject
+cd coolproject
+with_editor_script git evtag -u 472CDAFA v2015.1
+git checkout -q HEAD^
+if git evtag --verify v2015.1 2>err.txt; then
+    assert_not_reached 'Expected failure due to non HEAD'
+fi
+assert_file_has_content err.txt "Target.*is not HEAD"
+echo 'ok no tag verify on non-HEAD'
+
+

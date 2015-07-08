@@ -300,6 +300,8 @@ main (int    argc,
   git_object *obj = NULL;
   git_tag *tag;
   git_commit *commit = NULL;
+  git_oid head_oid;
+  git_oid specified_oid;
   char commit_oid_hexstr[GIT_OID_HEXSZ+1];
   GOptionContext *context;
   int r;
@@ -333,7 +335,9 @@ main (int    argc,
       if (argc == 2)
         rev = "HEAD";
       else if (argc == 3)
-        rev = argv[2];
+        {
+          rev = argv[2];
+        }
       else
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Too many arguments provided");
@@ -349,11 +353,14 @@ main (int    argc,
         }
     }
 
-  self.checksum = g_checksum_new (G_CHECKSUM_SHA512); 
-
   r = git_repository_open (&repo, ".");
   if (!handle_libgit_ret (r, error))
     goto out;
+
+  r = git_reference_name_to_id (&head_oid, repo, "HEAD");
+
+  self.checksum = g_checksum_new (G_CHECKSUM_SHA512); 
+
   r = git_repository_odb (&self.db, repo);
   if (!handle_libgit_ret (r, error))
     goto out;
@@ -373,26 +380,43 @@ main (int    argc,
 
   if (opt_verify)
     {
-      git_oid oid;
+      git_oid tag_oid;
       char *long_tagname = g_strconcat ("refs/tags/", tagname, NULL);
 
-      r = git_reference_name_to_id (&oid, repo, long_tagname);
+      r = git_reference_name_to_id (&tag_oid, repo, long_tagname);
       if (!handle_libgit_ret (r, error))
         goto out;
-      r = git_tag_lookup (&tag, repo, &oid);
+      r = git_tag_lookup (&tag, repo, &tag_oid);
       if (!handle_libgit_ret (r, error))
         goto out;
       r = git_tag_target (&obj, tag);
       if (!handle_libgit_ret (r, error))
         goto out;
+      specified_oid = *git_object_id (obj);
     }
   else
     {
       r = git_revparse_single (&obj, repo, rev);
       if (!handle_libgit_ret (r, error))
         goto out;
+      specified_oid = *git_object_id (obj);
     }
 
+  /* We have this restriction due to submodules; we require them to be
+   * checked out and initialized.
+   */
+  if (git_oid_cmp (&head_oid, &specified_oid) != 0)
+    {
+      char head_oid_hexstr[GIT_OID_HEXSZ+1];
+      char specified_oid_hexstr[GIT_OID_HEXSZ+1];
+
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Target %s (%s) is not HEAD (%s); currently git-evtag can only tag or verify HEAD in a pristine checkout",
+                   opt_verify ? tagname : rev,
+                   git_oid_tostr (specified_oid_hexstr, sizeof (specified_oid_hexstr), &specified_oid),
+                   git_oid_tostr (head_oid_hexstr, sizeof (head_oid_hexstr), &head_oid));
+      goto out;
+    }
   if (git_object_type (obj) != GIT_OBJ_COMMIT)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
