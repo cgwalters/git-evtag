@@ -2,7 +2,7 @@
 
 `git-evtag` can be used as a drop-in replacement for `git-tag -s`.  It
 will generate a strong checksum (called `Git-EVTag-v0-SHA512`) over the
-commit, tree, and blobs it references.
+commit, tree, and blobs it references (and recursively over submodules).
 
 Git mailing list thread:
 
