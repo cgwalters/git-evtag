@@ -132,6 +132,7 @@ checksum_odb_object (struct EvTag  *self,
 struct TreeWalkData {
   gboolean caught_error;
   struct EvTag *evtag;
+  git_repository *repo;
   git_odb *odb;
   GCancellable *cancellable;
   GError **error;
@@ -160,10 +161,15 @@ checksum_object_id (struct TreeWalkData  *twdata,
 }
 
 static int
+checksum_submodule (struct TreeWalkData *twdata, git_submodule *sm);
+
+static int
 checksum_tree_callback (const char *root,
                         const git_tree_entry *entry,
                         void *data)
 {
+  int iter_r = 1;
+  int tmp_r;
   struct TreeWalkData *twdata = data;
   git_otype otype = git_tree_entry_type (entry);
 
@@ -179,20 +185,32 @@ checksum_tree_callback (const char *root,
         }
       break;
     case GIT_OBJ_COMMIT:
+      {
+        git_submodule *submod = NULL;
+        tmp_r = git_submodule_lookup (&submod, twdata->repo, git_tree_entry_name (entry));
+        if (!handle_libgit_ret (tmp_r, twdata->error))
+          goto out;
+
+        tmp_r = checksum_submodule (twdata, submod);
+        if (tmp_r != 0)
+          goto out;
+
+        git_submodule_free (submod);
+      }
       break;
     default:
       g_assert_not_reached ();
     }
 
-  return 0;
+  iter_r = 0;
+ out:
+  if (iter_r > 0)
+    twdata->caught_error = TRUE;
+  return iter_r;
 }
-
-static int
-checksum_submodule (git_submodule *sm, const char *name, void *payload);
 
 static gboolean
 checksum_commit_contents (struct TreeWalkData *twdata,
-                          git_repository *repo,
                           const git_oid *commit_oid,
                           GCancellable *cancellable, GError **error)
 {
@@ -201,12 +219,8 @@ checksum_commit_contents (struct TreeWalkData *twdata,
   git_commit *commit = NULL;
   git_tree *tree = NULL;
 
-  r = git_commit_lookup (&commit, repo, commit_oid);
+  r = git_commit_lookup (&commit, twdata->repo, commit_oid);
   if (!handle_libgit_ret (r, error))
-    goto out;
-
-  r = git_submodule_foreach (repo, checksum_submodule, twdata);
-  if (r != 0)
     goto out;
 
   if (!checksum_object_id (twdata, commit_oid, error))
@@ -235,35 +249,27 @@ checksum_commit_contents (struct TreeWalkData *twdata,
 }
 
 static int
-checksum_submodule (git_submodule *sm, const char *name, void *payload)
+checksum_submodule (struct TreeWalkData *parent_twdata, git_submodule *sub)
 {
-  struct TreeWalkData *parent_twdata = payload;
   int r = 1;
-  git_repository *sub = NULL;
   const git_oid *sub_head;
-  struct TreeWalkData child_twdata = { FALSE, parent_twdata->evtag, NULL,
+  struct TreeWalkData child_twdata = { FALSE, parent_twdata->evtag, NULL, NULL,
                                        parent_twdata->cancellable,
                                        parent_twdata->error };
 
   parent_twdata->evtag->n_submodules++;
   
-  r = git_submodule_open (&sub, sm);
+  r = git_submodule_open (&child_twdata.repo, sub);
   if (!handle_libgit_ret (r, child_twdata.error))
     goto out;
 
-  r = git_repository_odb (&child_twdata.odb, sub);
+  r = git_repository_odb (&child_twdata.odb, child_twdata.repo);
   if (!handle_libgit_ret (r, child_twdata.error))
     goto out;
 
-  r = git_submodule_foreach (sub, checksum_submodule, &child_twdata);
-  if (r != 0)
-    goto out;
-  if (child_twdata.caught_error)
-    goto out;
+  sub_head = git_submodule_wd_id (sub);
 
-  sub_head = git_submodule_wd_id (sm);
-
-  if (!checksum_commit_contents (&child_twdata, sub, sub_head,
+  if (!checksum_commit_contents (&child_twdata, sub_head,
                                  child_twdata.cancellable, child_twdata.error))
     goto out;
 
@@ -271,8 +277,8 @@ checksum_submodule (git_submodule *sm, const char *name, void *payload)
  out:
   if (r > 0)
     child_twdata.caught_error = TRUE;
-  if (sub)
-    git_repository_free (sub);
+  if (child_twdata.repo)
+    git_repository_free (child_twdata.repo);
   if (child_twdata.odb)
     git_odb_free (child_twdata.odb);
   return r;
@@ -448,7 +454,7 @@ main (int    argc,
     goto out;
 
   {
-    struct TreeWalkData twdata = { FALSE, &self, NULL, cancellable, error };
+    struct TreeWalkData twdata = { FALSE, &self, repo, NULL, cancellable, error };
     r = git_status_foreach_ext (repo, &statusopts, status_cb, &twdata);
     if (twdata.caught_error)
       goto out;
@@ -502,13 +508,13 @@ main (int    argc,
 
   checksum_start_time = g_get_monotonic_time ();
   {
-    struct TreeWalkData twdata = { FALSE, &self, NULL, cancellable, error };
+    struct TreeWalkData twdata = { FALSE, &self, repo, NULL, cancellable, error };
     
     r = git_repository_odb (&twdata.odb, repo);
     if (!handle_libgit_ret (r, error))
       goto out;
     
-    if (!checksum_commit_contents (&twdata, repo, &specified_oid, cancellable, error))
+    if (!checksum_commit_contents (&twdata, &specified_oid, cancellable, error))
       goto out;
   }
   checksum_end_time = g_get_monotonic_time ();

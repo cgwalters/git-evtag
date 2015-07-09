@@ -69,9 +69,14 @@ attacker managed to create a SHA1 collision for a source file object
 In contrast, `Git-EVTag-v0-SHA512` covers the entirety of a single
 commit.  The algorithm is:
 
+Each object is processed in its raw form, including the header.
+
  - Add commit object to checksum
  - Add commit root tree to checksum
- - Walk tree recursively, add to checksum each tree and blob referenced
+ - Walk tree recursively, add to checksum the each tree and blob referenced.
+   If the tree entry is a commit (i.e. a submodule), recursively process
+   the commit it references in the submodule, then return to processing
+   the tree.
 
 This strong checksum then helps obviate the SHA1 weakness concerns of
 git for source distribution.  Now, the author of this tool believes
