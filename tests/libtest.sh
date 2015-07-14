@@ -139,7 +139,7 @@ setup_test_repository () {
     git push --set-upstream origin master
 
     cd ${test_tmpdir}/coolproject
-    git submodule add file://${test_tmpdir}/repos/subproject subproject 
+    git submodule add ../subproject subproject 
     git add subproject
     echo '#include subproject/src/libsub.c' >> src/cool.c
     gitcommit_inctime -a -m 'Add libsub'
