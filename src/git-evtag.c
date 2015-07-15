@@ -26,17 +26,21 @@
 #include <errno.h>
 
 #define EVTAG_SHA512 "Git-EVTag-EXPERIMENTAL-v0-SHA512:"
+#define LEGACY_EVTAG_ARCHIVE_TAR "ExtendedVerify-SHA256-archive-tar:"
+#define LEGACY_EVTAG_ARCHIVE_TAR_GITVERSION "ExtendedVerify-git-version:"
 
 static gboolean opt_print_only;
 static gboolean opt_verbose;
 static gboolean opt_verify;
 static char *opt_keyid;
+static gboolean opt_with_legacy_archive_tag;
 
 static GOptionEntry option_entries[] = {
   { "print-only", 0, 0, G_OPTION_ARG_NONE, &opt_print_only, "Don't create a tag, just compute and print evtag data", NULL },
   { "verify", 0, 0, G_OPTION_ARG_NONE, &opt_verify, "Validate the provided tag", NULL },
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Print statistics on what we're hashing", NULL },
   { "local-user", 'u', 0, G_OPTION_ARG_STRING, &opt_keyid, "Use the given GPG KEYID", "KEYID" },
+  { "with-legacy-archive-tag", 'u', 0, G_OPTION_ARG_NONE, &opt_with_legacy_archive_tag, "Also append a legacy variant of the checksum using `git archive`", NULL },
   { NULL }
 };
 
@@ -379,6 +383,75 @@ status_cb (const char *path, unsigned int status_flags, void *payload)
   return r;
 }
 
+static gboolean
+compute_and_append_legacy_archive_checksum (const char   *commit,
+                                            GString      *buf,
+                                            GCancellable *cancellable,
+                                            GError      **error)
+{
+  gboolean ret = FALSE;
+  const char *archive_argv[] = {"git", "archive", "--format=tar", commit, NULL};
+  GSubprocess *gitarchive_proc = NULL;
+  GInputStream *gitarchive_output = NULL;
+  guint64 legacy_checksum_start;
+  guint64 legacy_checksum_end;
+  GChecksum *legacy_archive_sha256 = g_checksum_new (G_CHECKSUM_SHA256);
+  gssize bytes_read;
+  char readbuf[4096];
+  char *gitversion = NULL;
+  int estatus;
+  char *nl;
+
+  legacy_checksum_start = g_get_monotonic_time ();
+
+  gitarchive_proc = g_subprocess_newv (archive_argv, G_SUBPROCESS_FLAGS_STDOUT_PIPE, error);
+
+  if (!gitarchive_proc)
+    goto out;
+          
+  gitarchive_output = g_subprocess_get_stdout_pipe (gitarchive_proc);
+          
+  while ((bytes_read = g_input_stream_read (gitarchive_output, readbuf, sizeof (readbuf),
+                                            cancellable, error)) > 0)
+    g_checksum_update (legacy_archive_sha256, (guint8*)readbuf, bytes_read);
+  if (bytes_read < 0)
+    goto out;
+  legacy_checksum_end = g_get_monotonic_time ();
+
+  g_string_append_printf (buf, "# git-evtag comment: Computed legacy checksum in %0.1fs\n",
+                          (double)(legacy_checksum_end - legacy_checksum_start) / (double) G_USEC_PER_SEC);
+
+  g_string_append (buf, LEGACY_EVTAG_ARCHIVE_TAR);
+  g_string_append_c (buf, ' ');
+  g_string_append (buf, g_checksum_get_string (legacy_archive_sha256));
+  g_string_append_c (buf, '\n');
+
+  if (!g_spawn_command_line_sync ("git --version", &gitversion, NULL, &estatus, error))
+    goto out;
+  if (!g_spawn_check_exit_status (estatus, error))
+    goto out;
+          
+  nl = strchr (gitversion, '\n');
+  if (!nl)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "git --version returned invalid content without a newline");
+      goto out;
+    }
+
+  *nl = '\0';
+  g_strchomp (gitversion);
+
+  g_string_append (buf, LEGACY_EVTAG_ARCHIVE_TAR_GITVERSION);
+  g_string_append_c (buf, ' ');
+  g_string_append (buf, gitversion);
+  g_string_append_c (buf, '\n');
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 int
 main (int    argc,
       char **argv)
@@ -598,7 +671,7 @@ main (int    argc,
       if (tmpfd < 0)
         goto out;
       (void) close (tmpfd);
-      
+
       g_string_append_printf (buf, "# git-evtag comment: Computed checksum in %0.1fs\n",
                               (double)(checksum_end_time - checksum_start_time) / (double) G_USEC_PER_SEC);
 
@@ -611,6 +684,14 @@ main (int    argc,
       g_string_append (buf, EVTAG_SHA512);
       g_string_append_c (buf, ' ');
       g_string_append (buf, g_checksum_get_string (self.checksum));
+      g_string_append_c (buf, '\n');
+
+      if (opt_with_legacy_archive_tag)
+        {
+          if (!compute_and_append_legacy_archive_checksum (commit_oid_hexstr, buf,
+                                                           cancellable, error))
+            goto out;
+        }
       
       if (!g_file_set_contents (temppath, buf->str, -1, error))
         goto out;
