@@ -734,7 +734,11 @@ main (int    argc,
       if (!spawn_sync_require_success ((char**)gittag_child_argv->pdata,
                                        G_SPAWN_SEARCH_PATH,
                                        error))
-        goto out;
+        {
+          g_printerr ("Saved tag message in: %s\n", temppath);
+          goto out;
+        }
+      (void) unlink (temppath);
       g_ptr_array_free (gittag_child_argv, TRUE);
     }
 
