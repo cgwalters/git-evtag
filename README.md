@@ -9,13 +9,6 @@ Git mailing list thread:
  - permalink: http://permalink.gmane.org/gmane.comp.version-control.git/264533
  - comments: http://comments.gmane.org/gmane.comp.version-control.git/264533
 
-### NOTE: EXPERIMENTAL
-
-THE ALGORITHM HERE IS NOT YET FINAL OR STANDARDIZED.  This project
-is currently suitable for testing and evaluation.  You can of course
-use it to tag your projects today, but be prepared for the algorithm
-and/or tag name to change in the future
-
 ### Using git-evtag
 
 Create a new `v2015.10` tag, covering the `HEAD` revision with GPG

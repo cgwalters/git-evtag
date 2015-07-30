@@ -25,7 +25,7 @@
 #include <string.h>
 #include <errno.h>
 
-#define EVTAG_SHA512 "Git-EVTag-EXPERIMENTAL-v0-SHA512:"
+#define EVTAG_SHA512 "Git-EVTag-v0-SHA512:"
 #define LEGACY_EVTAG_ARCHIVE_TAR "ExtendedVerify-SHA256-archive-tar:"
 #define LEGACY_EVTAG_ARCHIVE_TAR_GITVERSION "ExtendedVerify-git-version:"
 

@@ -105,4 +105,4 @@ def checksum_repo(repo, objid):
 checksum_repo('.', opts.rev)
 
 print("# git-evtag comment: submodules={0} commits={1} ({2}) trees={3} ({4}) blobs={5} ({6})".format(stats['commit']-1, stats['commit'], stats['commitbytes'], stats['tree'], stats['treebytes'], stats['blob'], stats['blobbytes']))
-print("Git-EVTag-Experimental-v0-SHA512: {0}".format(csum.hexdigest()))
+print("Git-EVTag-v0-SHA512: {0}".format(csum.hexdigest()))
