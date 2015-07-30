@@ -94,9 +94,11 @@ struct EvTag {
   GChecksum *checksum;
   guint n_submodules;
   guint n_commits;
+  guint64 commit_bytes;
   guint n_trees;
+  guint64 tree_bytes;
   guint n_blobs;
-  guint64 total_object_size;
+  guint64 blob_bytes;
 };
 
 static void
@@ -107,30 +109,33 @@ checksum_odb_object (struct EvTag  *self,
   const char *otypestr = git_object_type2string (otype);
   size_t size = git_odb_object_size (object);
   char *header;
+  size_t headerlen;
 
   header = g_strdup_printf ("%s %" G_GUINT64_FORMAT, otypestr, size);
   /* Also include the trailing NUL byte */
-  g_checksum_update (self->checksum, (guint8*)header, strlen (header) + 1);
+  headerlen = strlen (header) + 1;
+  g_checksum_update (self->checksum, (guint8*)header, headerlen);
   g_free (header);
 
   switch (otype)
     {
     case GIT_OBJ_BLOB:
       self->n_blobs++;
+      self->blob_bytes += size + headerlen;
       break;
     case GIT_OBJ_COMMIT:
       self->n_commits++;
+      self->commit_bytes += size + headerlen;
       break;
     case GIT_OBJ_TREE:
       self->n_trees++;
+      self->tree_bytes += size + headerlen;
       break;
     default:
       g_assert_not_reached ();
     }
 
   g_checksum_update (self->checksum, git_odb_object_data (object), size);
-
-  self->total_object_size += size;
 }
 
 struct TreeWalkData {
@@ -317,12 +322,17 @@ verify_line (const char *expected_checksum,
 static char *
 get_stats (struct EvTag *self)
 {
-  return g_strdup_printf ("# git-evtag comment: submodules=%u commits=%u trees=%u blobs=%u bytes=%" G_GUINT64_FORMAT "",
+  return g_strdup_printf ("# git-evtag comment: submodules=%u "
+                          "commits=%u (%" G_GUINT64_FORMAT ") "
+                          "trees=%u (%" G_GUINT64_FORMAT ") "
+                          "blobs=%u (%" G_GUINT64_FORMAT ")",
                           self->n_submodules,
                           self->n_commits,
+                          self->commit_bytes,
                           self->n_trees,
+                          self->tree_bytes,
                           self->n_blobs,
-                          self->total_object_size);
+                          self->blob_bytes);
 }
 
 static gboolean
