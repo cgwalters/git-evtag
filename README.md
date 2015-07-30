@@ -52,7 +52,7 @@ the same as a particular git commit.
 
 What `git-evtag` allows is implementing a similar model with git
 itself, computing a strong checksum over the complete source objects for
-the target commit (+ trees + blobs).
+the target commit (+ trees + blobs + submodules).
 
 Then no out of band distribution mechanism is necessary - git already
 supports GPG signatures for tags.
@@ -64,37 +64,78 @@ supports GPG signatures for tags.
 
 Git uses a modified Merkle tree with SHA1, which means that if an
 attacker managed to create a SHA1 collision for a source file object
-(git blob), it would affect all revisions and checkouts.
+(git blob), it would affect *all* revisions and checkouts -
+invalidating the security of *all* GPG signed tags whose commits point
+to that object.
 
-In contrast, `Git-EVTag-v0-SHA512` covers the entirety of a single
-commit.  The algorithm is:
+Now, the author of this tool believes that *today*, GPG signed git
+tags are fairly secure, especially if one is careful to ensure
+transport integrity (e.g. pinned TLS certificates from the origin).
 
-Each object is processed in its raw form, including the header.
+That said, while it is true that at the time of this writing, no
+public SHA1 collision is known, there are attacks against reduced
+round variants of SHA1.  We expect git repositories to be used for
+many, many years to come.  It makes a lot of sense to take additional
+steps now to add security.
 
- - Add commit object to checksum
- - Add commit root tree to checksum
- - Walk tree recursively, add to checksum the each tree and blob referenced.
-   If the tree entry is a commit (i.e. a submodule), recursively process
-   the commit it references in the submodule, then return to processing
-   the tree.
+### The Git-EVTag algorithm (v0)
 
-This strong checksum then helps obviate the SHA1 weakness concerns of
-git for source distribution.  Now, the author of this tool believes
-that today, GPG signed git tags are fairly secure, especially if one
-is careful to ensure transport integrity (e.g. pinned TLS certificates
-from the origin).
+There is currently only one version of the `Git-EVTag` algorithm,
+called `v0`.  It is declared stable.  All further text refers to this
+version of the algorithm.  In the unlikely event that it is necessary
+to introduce a new version, this tool will support all known versions.
 
-But while at the time of this writing, no public SHA1 collision is
-known, there are attacks against reduced round SHA1.  We expect git
-repositories to be used for many, many years to come.  It makes a lot
-of sense to take additional steps now to add security.
+`Git-EVTag-v0-SHA512` covers the complete contents of all objects for
+a commit - similarly to checksumming `git archive`.  Each object is
+added to the checksum in its raw canonicalized form, including the
+header.
 
-And most importantly, it's quite inexpensive and practical to compute
-`Git-EVTag-v0-SHA512` once per tag/release creation.
+For a given commit (in Rust-style pseudocode):
 
-At the time of this writing, on the Linux kernel (a large project by
-most standards), it takes about 5 seconds to compute on this author's
-laptop.  On most smaller projects, it's completely negligible.
+```rust
+fn git_evtag(repo: GitRepo, commitid: String) -> SHA512 {
+    let checksum = new SHA512();
+    walk_commit(repo, checksum, commitid)
+    return checksum
+}
+
+fn walk_commit(repo: GitRepo, checksum : SHA512, commitid : String) {
+    checksum_object(repo, checksum, commitid)
+    let treeid = repo.load_commit(commitid).treeid();
+    walk(repo, checksum, treeid)
+}
+
+fn checksum_object(repo: GitRepo, checksum: SHA512, objid: String) -> () {
+    let bytes = repo.load_object_raw(objid);
+    checksum.update(bytes)
+}
+
+fn walk(repo: GitRepo, checksum: SHA512, treeid: String) -> () {
+    // First, add the tree object itself
+    checksum_object(repo, checksum, treeid);
+    let tree = repo.load_tree(treeid);
+    for child in tree.children() {
+        match childtype {
+            Blob(blobid) => checksum_object(repo, checksum, blobid),
+            Tree(child_treeid) => walk(repo, checksum, child_treeid),
+            Commit(commitid, path) => {
+                let child_repo = repo.get_submodule(path)
+                walk_commit(child_repo, checksum, commitid)
+            }
+        }
+    }
+}
+```
+
+This strong checksum, when covered by a GPG signature, can be verified
+reproducibly offline after cloning a git repository for a particular
+tag.
+
+It's quite inexpensive and practical to compute `Git-EVTag-v0-SHA512`
+once per tag/release creation.  At the time of this writing, on the
+Linux kernel (a large project by most standards), it takes about 5
+seconds to compute on this author's laptop.  On most smaller projects,
+it's completely negligible.
 
 ### Aside: other aspects of tarballs
 
