@@ -18,7 +18,7 @@ signature and `Git-EVTag-v0-SHA512`:
 $ git-evtag v2015.10
  ( type your tag message, note a Git-EVTag-v0-SHA512 line in the message )
 $ git show v2015.10
- ( Note signature covered by PGP signature )
+ ( Note signature covered by GPG signature )
 ```
 
 Verify a tag:
@@ -81,14 +81,16 @@ steps now to add security.
 ### The Git-EVTag algorithm (v0)
 
 There is currently only one version of the `Git-EVTag` algorithm,
-called `v0`.  It is declared stable.  All further text refers to this
-version of the algorithm.  In the unlikely event that it is necessary
-to introduce a new version, this tool will support all known versions.
+called `v0` - and it only supports
+[SHA-512](https://en.wikipedia.org/wiki/SHA-2).  It is declared
+stable.  All further text refers to this version of the algorithm.  In
+the unlikely event that it is necessary to introduce a new version,
+this tool will support all known versions.
 
 `Git-EVTag-v0-SHA512` covers the complete contents of all objects for
-a commit - similarly to checksumming `git archive`.  Each object is
-added to the checksum in its raw canonicalized form, including the
-header.
+a commit; again similar to checksumming `git archive`, except
+reproducible.  Each object is added to the checksum in its raw
+canonicalized form, including the header.
 
 For a given commit (in Rust-style pseudocode):
 
@@ -127,9 +129,9 @@ fn walk(repo: GitRepo, checksum: SHA512, treeid: String) -> () {
 }
 ```
 
-This strong checksum, when covered by a GPG signature, can be verified
-reproducibly offline after cloning a git repository for a particular
-tag.
+This strong checksum, can be verified reproducibly offline after
+cloning a git repository for a particular tag.  When covered by a GPG
+signature, it provides a strong end-to-end integrity guarantee.
 
 It's quite inexpensive and practical to compute `Git-EVTag-v0-SHA512`
 once per tag/release creation.  At the time of this writing, on the
