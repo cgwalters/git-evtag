@@ -1,0 +1,108 @@
+#!/usr/bin/env python
+#
+# An implementation of Git-EVTag in a mixture of Python and
+# git-as-subprocess.  Slower than C, but easier to understand
+# and test.
+# 
+# For correct submodule handling, requires the working directory have
+# submodule checkouts.
+
+from __future__ import print_function
+
+import os
+import sys
+import argparse
+import subprocess
+import hashlib
+
+try:
+    from subprocess import DEVNULL # pylint: disable=no-name-in-module
+except ImportError:
+    import os
+    DEVNULL = open(os.devnull, 'wb')
+
+parser = argparse.ArgumentParser(description="Compute Git-EVTag checksum")
+parser.add_argument('rev', help='Revision to checksum')
+opts = parser.parse_args()
+
+csum = hashlib.sha512()
+
+stats = {'commit': 0,
+         'blob': 0,
+         'tree': 0,
+         'commitbytes': 0,
+         'blobbytes': 0,
+         'treebytes': 0}
+
+def checksum_bytes(otype, buf):
+    blen = len(buf)
+    csum.update(buf)
+    stats[otype + 'bytes'] += blen
+    return blen
+
+def checksum_object(repo, objid):
+    p = subprocess.Popen(['git', 'cat-file', '--batch'],
+                         stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE,
+                         close_fds=True,
+                         cwd=repo)
+    p.stdin.write(objid + '\n')
+    p.stdin.close()
+    (objid,objtype,lenstr) = p.stdout.readline().split(None, 2)
+    olen = int(lenstr)
+    lenstr = lenstr.strip()
+    buf = "{0} {1}\000".format(objtype, lenstr)
+    checksum_bytes(objtype, buf)
+
+    stats[objtype] += 1
+
+    if objtype == 'commit':
+        buf = p.stdout.readline()
+        olen -= checksum_bytes(objtype, buf)
+        (treestr, treeobjid) = buf.split(None, 1)
+        treeobjid = treeobjid.strip()
+        assert treestr == 'tree'
+    else:
+        treeobjid = None
+        
+    while olen > 0:
+        b = p.stdout.read(min(8192, olen))
+        bytes_read = checksum_bytes(objtype, b)
+        olen -= bytes_read
+    if olen > 0:
+        raise ValueError("Failed to read {0} bytes from object".format(olen))
+    p.wait()
+    if p.returncode != 0:
+        raise subprocess.CalledProcessError(p.returncode, 'git cat-file')
+    return treeobjid
+
+def checksum_tree(repo, objid):
+    checksum_object(repo, objid)
+    p = subprocess.Popen(['git', 'ls-tree', objid],
+                         stdin=DEVNULL,
+                         stdout=subprocess.PIPE,
+                         close_fds=True,
+                         cwd=repo)
+    for line in p.stdout:
+        (mode, otype, subid, fname) = line.split(None, 3)
+        fname = fname.strip()
+        if otype == 'blob':
+            checksum_object(repo, subid)
+        elif otype == 'tree':
+            checksum_tree(repo, subid)
+        elif otype == 'commit':
+            checksum_repo(os.path.join(repo, fname), subid)
+        else:
+            assert False
+    p.wait()
+    if p.returncode != 0:
+        raise subprocess.CalledProcessError(p.returncode, 'git ls-tree')
+
+def checksum_repo(repo, objid):
+    treeid = checksum_object(repo, objid)
+    checksum_tree(repo, treeid)
+
+checksum_repo('.', opts.rev)
+
+print("# git-evtag comment: submodules={0} commits={1} ({2}) trees={3} ({4}) blobs={5} ({6})".format(stats['commit']-1, stats['commit'], stats['commitbytes'], stats['tree'], stats['treebytes'], stats['blob'], stats['blobbytes']))
+print("Git-EVTag-Experimental-v0-SHA512: {0}".format(csum.hexdigest()))
