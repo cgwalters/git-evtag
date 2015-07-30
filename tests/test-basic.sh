@@ -35,9 +35,13 @@ cd coolproject
 git submodule update --init
 with_editor_script git evtag -u 472CDAFA v2015.1
 git show refs/tags/v2015.1 > tag.txt
-assert_file_has_content tag.txt 'Git-EVTag-v0-SHA512: 58e9834248c054f844f00148a030876f77eb85daa3caa15a20f3061f181403bae7b7e497fca199d25833b984c60f3202b16ebe0ed3a36e6b82f33618d75c569d'
+TAG='Git-EVTag-v0-SHA512: 58e9834248c054f844f00148a030876f77eb85daa3caa15a20f3061f181403bae7b7e497fca199d25833b984c60f3202b16ebe0ed3a36e6b82f33618d75c569d'
+assert_file_has_content tag.txt "${TAG}"
 with_editor_script git evtag --verify v2015.1 | tee verify.out
-assert_file_has_content verify.out 'Successfully verified: Git-EVTag-v0-SHA512: 58e9834248c054f844f00148a030876f77eb85daa3caa15a20f3061f181403bae7b7e497fca199d25833b984c60f3202b16ebe0ed3a36e6b82f33618d75c569d'
+assert_file_has_content verify.out "Successfully verified: ${TAG}"
+${SRCDIR}/git-evtag-compute-py HEAD > tag-py.txt
+assert_file_has_content tag-py.txt "${TAG}"
+
 rm -f tag.txt
 rm -f verify.out
 echo "ok tag + verify"
