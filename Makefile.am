@@ -32,5 +32,5 @@ gir_DATA = $(INTROSPECTION_GIRS)
 typelibdir = $(pkglibdir)/girepository-1.0
 typelib_DATA = $(gir_DATA:.gir=.typelib)
 
-include Makefile-git-evtag.am
-include Makefile-tests.am
+include src/Makefile-git-evtag.am
+include tests/Makefile-tests.am
