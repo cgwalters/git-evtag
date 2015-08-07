@@ -108,8 +108,14 @@ fn walk_commit(repo: GitRepo, checksum : SHA512, commitid : String) {
 }
 
 fn checksum_object(repo: GitRepo, checksum: SHA512, objid: String) -> () {
-    let bytes = repo.load_object_raw(objid);
-    checksum.update(bytes)
+    // This is the canonical header of the object; <typename> <length (ascii base 10)>
+    // https://git-scm.com/book/en/v2/Git-Internals-Git-Objects#Object-Storage
+    let header : &str = repo.load_object_header(objid);
+    // The remaining raw content as a byte array
+    let body : &[u8] = repo.load_object_body(objid);
+    
+    checksum.update(header.as_bytes())
+    checksum.update(body)
 }
 
 fn walk(repo: GitRepo, checksum: SHA512, treeid: String) -> () {
