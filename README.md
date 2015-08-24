@@ -111,10 +111,13 @@ fn checksum_object(repo: GitRepo, checksum: SHA512, objid: String) -> () {
     // This is the canonical header of the object; <typename> <length (ascii base 10)>
     // https://git-scm.com/book/en/v2/Git-Internals-Git-Objects#Object-Storage
     let header : &str = repo.load_object_header(objid);
-    // The remaining raw content as a byte array
+    // The NUL byte after the header, explicitly included in the checksum
+    let nul = [0u8];
+    // The remaining raw content of the object as a byte array
     let body : &[u8] = repo.load_object_body(objid);
     
     checksum.update(header.as_bytes())
+    checksum.update(&nul);
     checksum.update(body)
 }
 
