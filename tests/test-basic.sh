@@ -105,3 +105,21 @@ assert_file_has_content verify.out 'Successfully verified: Git-EVTag-v0-SHA512: 
 rm -f tag.txt
 rm -f verify.out
 echo "ok tag + verify legacy"
+
+cd ${test_tmpdir}
+rm coolproject -rf
+git clone repos/coolproject
+cd coolproject
+git submodule update --init
+with_editor_script git evtag --no-sign v2015.1
+git show refs/tags/v2015.1 > tag.txt
+assert_file_has_content tag.txt 'Git-EVTag-v0-SHA512: 58e9834248c054f844f00148a030876f77eb85daa3caa15a20f3061f181403bae7b7e497fca199d25833b984c60f3202b16ebe0ed3a36e6b82f33618d75c569d'
+assert_not_file_has_content tag.txt '-----BEGIN PGP SIGNATURE-----'
+if git evtag --verify v2015.1 2>err.txt; then
+    assert_not_reached 'Expected failure due to no GPG signature'
+fi
+assert_file_has_content err.txt "no signature found"
+git evtag --verify-only-checksum v2015.1
+rm -f tag.txt
+rm -f verify.out
+echo "ok checksum-only tag + verify"

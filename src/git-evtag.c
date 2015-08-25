@@ -32,12 +32,16 @@
 static gboolean opt_print_only;
 static gboolean opt_verbose;
 static gboolean opt_verify;
+static gboolean opt_no_sign;
+static gboolean opt_verify_checksum;
 static char *opt_keyid;
 static gboolean opt_with_legacy_archive_tag;
 
 static GOptionEntry option_entries[] = {
   { "print-only", 0, 0, G_OPTION_ARG_NONE, &opt_print_only, "Don't create a tag, just compute and print evtag data", NULL },
   { "verify", 0, 0, G_OPTION_ARG_NONE, &opt_verify, "Validate the provided tag", NULL },
+  { "verify-only-checksum", 0, 0, G_OPTION_ARG_NONE, &opt_verify_checksum, "Validate only the checksum", NULL },
+  { "no-sign", 0, 0, G_OPTION_ARG_NONE, &opt_no_sign, "Do not GPG sign tag", NULL },
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Print statistics on what we're hashing", NULL },
   { "local-user", 'u', 0, G_OPTION_ARG_STRING, &opt_keyid, "Use the given GPG KEYID", "KEYID" },
   { "with-legacy-archive-tag", 'u', 0, G_OPTION_ARG_NONE, &opt_with_legacy_archive_tag, "Also append a legacy variant of the checksum using `git archive`", NULL },
@@ -482,6 +486,7 @@ main (int    argc,
   const char *rev = NULL;
   git_status_options statusopts = GIT_STATUS_OPTIONS_INIT;
   struct EvTag self = { NULL, };
+  gboolean verifying;
   
   /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
   g_setenv ("GIO_USE_VFS", "local", TRUE);
@@ -501,7 +506,9 @@ main (int    argc,
     }
   tagname = argv[1];
 
-  if (!opt_verify)
+  verifying = opt_verify || opt_verify_checksum;
+
+  if (!verifying)
     {
       if (argc == 2)
         rev = "HEAD";
@@ -545,7 +552,7 @@ main (int    argc,
       goto out;
   }
 
-  if (opt_verify)
+  if (verifying)
     {
       git_oid tag_oid;
       git_object *obj = NULL;
@@ -581,7 +588,7 @@ main (int    argc,
 
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Target %s (%s) is not HEAD (%s); currently git-evtag can only tag or verify HEAD in a pristine checkout",
-                   opt_verify ? tagname : rev,
+                   verifying ? tagname : rev,
                    git_oid_tostr (specified_oid_hexstr, sizeof (specified_oid_hexstr), &specified_oid),
                    git_oid_tostr (head_oid_hexstr, sizeof (head_oid_hexstr), &head_oid));
       goto out;
@@ -602,7 +609,7 @@ main (int    argc,
   }
   checksum_end_time = g_get_monotonic_time ();
 
-  if (opt_verify)
+  if (verifying)
     {
       gboolean verified = FALSE;
       const char *message = git_tag_message (tag);
@@ -614,9 +621,12 @@ main (int    argc,
       if (!git_oid_tostr (tag_oid_hexstr, sizeof (tag_oid_hexstr), git_tag_id (tag)))
         g_assert_not_reached ();
 
-      git_verify_tag_argv[2] = tag_oid_hexstr;
-      if (!spawn_sync_require_success (git_verify_tag_argv, G_SPAWN_SEARCH_PATH, error))
-        goto out;
+      if (opt_verify)
+        {
+          git_verify_tag_argv[2] = tag_oid_hexstr;
+          if (!spawn_sync_require_success (git_verify_tag_argv, G_SPAWN_SEARCH_PATH, error))
+            goto out;
+        }
 
       expected_checksum = g_checksum_get_string (self.checksum);
 
@@ -730,7 +740,8 @@ main (int    argc,
       
       g_ptr_array_add (gittag_child_argv, "git");
       g_ptr_array_add (gittag_child_argv, "tag");
-      g_ptr_array_add (gittag_child_argv, "-s");
+      if (!opt_no_sign)
+        g_ptr_array_add (gittag_child_argv, "-s");
       if (opt_keyid)
         {
           g_ptr_array_add (gittag_child_argv, "--local-user");
