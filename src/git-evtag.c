@@ -29,22 +29,41 @@
 #define LEGACY_EVTAG_ARCHIVE_TAR "ExtendedVerify-SHA256-archive-tar:"
 #define LEGACY_EVTAG_ARCHIVE_TAR_GITVERSION "ExtendedVerify-git-version:"
 
-static gboolean opt_print_only;
-static gboolean opt_verbose;
-static gboolean opt_verify;
-static gboolean opt_no_sign;
-static gboolean opt_verify_checksum;
-static char *opt_keyid;
-static gboolean opt_with_legacy_archive_tag;
+struct EvTag;
 
-static GOptionEntry option_entries[] = {
+typedef struct {
+  const char *name;
+  gboolean (*fn) (struct EvTag *self, int argc, char **argv, GCancellable *cancellable, GError **error);
+} Subcommand;
+
+#define SUBCOMMANDPROTO(name) static gboolean git_evtag_builtin_ ## name (struct EvTag *self, int argc, char **argv, GCancellable *cancellable, GError **error)
+
+SUBCOMMANDPROTO(sign);
+SUBCOMMANDPROTO(verify);
+
+static Subcommand commands[] = {
+  { "sign", git_evtag_builtin_sign },
+  { "verify", git_evtag_builtin_verify },
+  { NULL, NULL }
+};
+
+static gboolean opt_verbose;
+static gboolean opt_print_only;
+static gboolean opt_no_signature;
+static gboolean opt_with_legacy_archive_tag;
+static char *opt_keyid;
+
+static GOptionEntry sign_options[] = {
   { "print-only", 0, 0, G_OPTION_ARG_NONE, &opt_print_only, "Don't create a tag, just compute and print evtag data", NULL },
-  { "verify", 0, 0, G_OPTION_ARG_NONE, &opt_verify, "Validate the provided tag", NULL },
-  { "verify-only-checksum", 0, 0, G_OPTION_ARG_NONE, &opt_verify_checksum, "Validate only the checksum", NULL },
-  { "no-sign", 0, 0, G_OPTION_ARG_NONE, &opt_no_sign, "Do not GPG sign tag", NULL },
+  { "no-signature", 0, 0, G_OPTION_ARG_NONE, &opt_no_signature, "Do not GPG sign tag", NULL },
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Print statistics on what we're hashing", NULL },
   { "local-user", 'u', 0, G_OPTION_ARG_STRING, &opt_keyid, "Use the given GPG KEYID", "KEYID" },
   { "with-legacy-archive-tag", 'u', 0, G_OPTION_ARG_NONE, &opt_with_legacy_archive_tag, "Also append a legacy variant of the checksum using `git archive`", NULL },
+  { NULL }
+};
+
+static GOptionEntry verify_entries[] = {
+  { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Print statistics on what we're hashing", NULL },
   { NULL }
 };
 
@@ -95,6 +114,8 @@ handle_libgit_ret (int r, GError **error)
 }
 
 struct EvTag {
+  git_repository *top_repo;
+
   GChecksum *checksum;
   guint n_submodules;
   guint n_commits;
@@ -466,38 +487,79 @@ compute_and_append_legacy_archive_checksum (const char   *commit,
   return ret;
 }
 
-int
-main (int    argc,
-      char **argv)
+static gboolean
+validate_at_head (struct EvTag  *self,
+                  git_oid       *specified_oid,
+                  GError       **error)
 {
-  GError *local_error = NULL;
-  GError **error = &local_error;
-  GCancellable *cancellable = NULL;
-  git_repository *repo = NULL;
-  git_tag *tag;
+  gboolean ret = FALSE;
   git_oid head_oid;
-  git_oid specified_oid;
-  char commit_oid_hexstr[GIT_OID_HEXSZ+1];
-  GOptionContext *context;
+  int r;
+
+  r = git_reference_name_to_id (&head_oid, self->top_repo, "HEAD");
+  if (!handle_libgit_ret (r, error))
+    goto out;
+
+  /* We have this restriction due to submodules; we require them to be
+   * checked out and initialized.
+   */
+  if (git_oid_cmp (&head_oid, specified_oid) != 0)
+    {
+      char head_oid_hexstr[GIT_OID_HEXSZ+1];
+      char specified_oid_hexstr[GIT_OID_HEXSZ+1];
+
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Target %s is not HEAD (%s); currently git-evtag can only tag or verify HEAD in a pristine checkout",
+                   git_oid_tostr (specified_oid_hexstr, sizeof (specified_oid_hexstr), specified_oid),
+                   git_oid_tostr (head_oid_hexstr, sizeof (head_oid_hexstr), &head_oid));
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+checksum_commit_recurse (struct EvTag      *self,
+                         GCancellable      *cancellable,
+                         git_oid           *specified_oid,
+                         guint64           *out_elapsed_time,
+                         GError           **error)
+{
+  gboolean ret = FALSE;
   int r;
   guint64 checksum_start_time;
   guint64 checksum_end_time;
+                         
+  checksum_start_time = g_get_monotonic_time ();
+  {
+    struct TreeWalkData twdata = { FALSE, self, self->top_repo, NULL, cancellable, error };
+    
+    r = git_repository_odb (&twdata.odb, self->top_repo);
+    if (!handle_libgit_ret (r, error))
+      goto out;
+    
+    if (!checksum_commit_contents (&twdata, specified_oid, cancellable, error))
+      goto out;
+  }
+  checksum_end_time = g_get_monotonic_time ();
+
+  ret = TRUE;
+  if (out_elapsed_time)
+    *out_elapsed_time = checksum_end_time - checksum_start_time;
+ out:
+  return ret;
+}
+
+static gboolean
+git_evtag_builtin_sign (struct EvTag *self, int argc, char **argv, GCancellable *cancellable, GError **error)
+{
+  gboolean ret = FALSE;
+  int r;
   const char *tagname;
-  const char *rev = NULL;
-  git_status_options statusopts = GIT_STATUS_OPTIONS_INIT;
-  struct EvTag self = { NULL, };
-  gboolean verifying;
-  
-  /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
-  g_setenv ("GIO_USE_VFS", "local", TRUE);
-
-  git_threads_init();
-
-  context = g_option_context_new ("TAGNAME [REV] - Create or verify a strong signed commit");
-  g_option_context_add_main_entries (context, option_entries, NULL);
-
-  if (!g_option_context_parse (context, &argc, &argv, error))
-    goto out;
+  git_object *obj = NULL;
+  git_oid specified_oid;
 
   if (argc <= 1)
     {
@@ -506,171 +568,15 @@ main (int    argc,
     }
   tagname = argv[1];
 
-  verifying = opt_verify || opt_verify_checksum;
-
-  if (!verifying)
-    {
-      if (argc == 2)
-        rev = "HEAD";
-      else if (argc == 3)
-        {
-          rev = argv[2];
-        }
-      else
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Too many arguments provided");
-          goto out;
-        }
-    }
-  else
-    {
-      if (argc > 2)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Too many arguments provided");
-          goto out;
-        }
-    }
-
-  r = git_repository_open (&repo, ".");
+  r = git_revparse_single (&obj, self->top_repo, rev);
   if (!handle_libgit_ret (r, error))
     goto out;
+  specified_oid = *git_object_id (obj);
 
-  r = git_reference_name_to_id (&head_oid, repo, "HEAD");
-
-  self.checksum = g_checksum_new (G_CHECKSUM_SHA512); 
-
-  r = git_status_init_options (&statusopts, GIT_STATUS_OPTIONS_VERSION);
-  if (!handle_libgit_ret (r, error))
+  if (!validate_at_head (self, &specified_oid, error))
     goto out;
 
-  {
-    struct TreeWalkData twdata = { FALSE, &self, repo, NULL, cancellable, error };
-    r = git_status_foreach_ext (repo, &statusopts, status_cb, &twdata);
-    if (twdata.caught_error)
-      goto out;
-    if (!handle_libgit_ret (r, error))
-      goto out;
-  }
-
-  if (verifying)
-    {
-      git_oid tag_oid;
-      git_object *obj = NULL;
-      char *long_tagname = g_strconcat ("refs/tags/", tagname, NULL);
-
-      r = git_reference_name_to_id (&tag_oid, repo, long_tagname);
-      if (!handle_libgit_ret (r, error))
-        goto out;
-      r = git_tag_lookup (&tag, repo, &tag_oid);
-      if (!handle_libgit_ret (r, error))
-        goto out;
-      r = git_tag_target (&obj, tag);
-      if (!handle_libgit_ret (r, error))
-        goto out;
-      specified_oid = *git_object_id (obj);
-    }
-  else
-    {
-      git_object *obj = NULL;
-      r = git_revparse_single (&obj, repo, rev);
-      if (!handle_libgit_ret (r, error))
-        goto out;
-      specified_oid = *git_object_id (obj);
-    }
-
-  /* We have this restriction due to submodules; we require them to be
-   * checked out and initialized.
-   */
-  if (git_oid_cmp (&head_oid, &specified_oid) != 0)
-    {
-      char head_oid_hexstr[GIT_OID_HEXSZ+1];
-      char specified_oid_hexstr[GIT_OID_HEXSZ+1];
-
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Target %s (%s) is not HEAD (%s); currently git-evtag can only tag or verify HEAD in a pristine checkout",
-                   verifying ? tagname : rev,
-                   git_oid_tostr (specified_oid_hexstr, sizeof (specified_oid_hexstr), &specified_oid),
-                   git_oid_tostr (head_oid_hexstr, sizeof (head_oid_hexstr), &head_oid));
-      goto out;
-    }
-  git_oid_fmt (commit_oid_hexstr, &specified_oid);
-  commit_oid_hexstr[sizeof(commit_oid_hexstr)-1] = '\0';
-
-  checksum_start_time = g_get_monotonic_time ();
-  {
-    struct TreeWalkData twdata = { FALSE, &self, repo, NULL, cancellable, error };
-    
-    r = git_repository_odb (&twdata.odb, repo);
-    if (!handle_libgit_ret (r, error))
-      goto out;
-    
-    if (!checksum_commit_contents (&twdata, &specified_oid, cancellable, error))
-      goto out;
-  }
-  checksum_end_time = g_get_monotonic_time ();
-
-  if (verifying)
-    {
-      gboolean verified = FALSE;
-      const char *message = git_tag_message (tag);
-      const char *nl;
-      const char *expected_checksum;
-      char tag_oid_hexstr[GIT_OID_HEXSZ+1];
-      char *git_verify_tag_argv[] = {"git", "verify-tag", NULL, NULL };
-
-      if (!git_oid_tostr (tag_oid_hexstr, sizeof (tag_oid_hexstr), git_tag_id (tag)))
-        g_assert_not_reached ();
-
-      if (opt_verify)
-        {
-          git_verify_tag_argv[2] = tag_oid_hexstr;
-          if (!spawn_sync_require_success (git_verify_tag_argv, G_SPAWN_SEARCH_PATH, error))
-            goto out;
-        }
-
-      expected_checksum = g_checksum_get_string (self.checksum);
-
-      while (TRUE)
-        {
-          nl = strchr (message, '\n');
-
-          if (g_str_has_prefix (message, EVTAG_SHA512))
-            {
-              char *line;
-              if (nl)
-                line = g_strndup (message, nl - message);
-              else
-                line = g_strdup (message);
-              
-              g_strchomp (line);
-
-              if (!verify_line (expected_checksum, line, commit_oid_hexstr, error))
-                goto out;
-              
-                {
-                  char *stats = get_stats (&self);
-                  g_print ("%s\n", stats);
-                  g_free (stats);
-                }
-              g_print ("Successfully verified: %s\n", line);
-              verified = TRUE;
-              break;
-            }
-          
-          if (!nl)
-            break;
-          message = nl + 1;
-        }
-
-      if (!verified)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Failed to find %s in tag message",
-                       EVTAG_SHA512);
-          goto out;
-        }
-    }
-  else if (opt_print_only)
+  if (opt_print_only)
     {
       char *stats = get_stats (&self);
       g_print ("%s\n", stats);
@@ -761,6 +667,298 @@ main (int    argc,
         }
       (void) unlink (temppath);
       g_ptr_array_free (gittag_child_argv, TRUE);
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+git_evtag_builtin_verify (struct EvTag *self, int argc, char **argv, GCancellable *cancellable, GError **error)
+{
+  gboolean ret = FALSE;
+  gboolean verified = FALSE;
+  git_oid tag_oid;
+  git_object *obj = NULL;
+  char *long_tagname = NULL;
+  const char *tagname;
+  const char *message;
+  git_oid specified_oid;
+  const char *nl;
+  const char *expected_checksum;
+  char tag_oid_hexstr[GIT_OID_HEXSZ+1];
+  char *git_verify_tag_argv[] = {"git", "verify-tag", NULL, NULL };
+  
+  if (argc <= 1)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "A TAGNAME argument is required");
+      goto out;
+    }
+
+  tagname = argv[1];
+
+  long_tagname = g_strconcat ("refs/tags/", tagname, NULL);
+
+  r = git_reference_name_to_id (&tag_oid, self->top_repo, long_tagname);
+  if (!handle_libgit_ret (r, error))
+    goto out;
+  r = git_tag_lookup (&tag, self->top_repo, &tag_oid);
+  if (!handle_libgit_ret (r, error))
+    goto out;
+  r = git_tag_target (&obj, tag);
+  if (!handle_libgit_ret (r, error))
+    goto out;
+  specified_oid = *git_object_id (obj);
+
+  if (!validate_at_head (self, &specified_oid, error))
+    goto out;
+
+  message = git_tag_message (tag);
+
+  if (!git_oid_tostr (tag_oid_hexstr, sizeof (tag_oid_hexstr), git_tag_id (tag)))
+    g_assert_not_reached ();
+  
+  git_verify_tag_argv[2] = tag_oid_hexstr;
+  if (!spawn_sync_require_success (git_verify_tag_argv, G_SPAWN_SEARCH_PATH, error))
+    goto out;
+
+  expected_checksum = g_checksum_get_string (self.checksum);
+  
+  while (TRUE)
+    {
+      nl = strchr (message, '\n');
+
+      if (g_str_has_prefix (message, EVTAG_SHA512))
+        {
+          char *line;
+          if (nl)
+            line = g_strndup (message, nl - message);
+          else
+            line = g_strdup (message);
+              
+          g_strchomp (line);
+
+          if (!verify_line (expected_checksum, line, commit_oid_hexstr, error))
+            goto out;
+              
+          {
+            char *stats = get_stats (&self);
+            g_print ("%s\n", stats);
+            g_free (stats);
+          }
+          g_print ("Successfully verified: %s\n", line);
+          verified = TRUE;
+          break;
+        }
+          
+      if (!nl)
+        break;
+      message = nl + 1;
+    }
+  
+  if (!verified)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Failed to find %s in tag message",
+                   EVTAG_SHA512);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static GOptionContext *
+option_context_new_with_commands (Subcommand *commands)
+{
+  GOptionContext *context;
+  GString *summary;
+
+  context = g_option_context_new ("COMMAND");
+
+  summary = g_string_new ("Builtin Commands:");
+
+  while (commands->name != NULL)
+    {
+      g_string_append_printf (summary, "\n  %s", commands->name);
+      commands++;
+    }
+
+  g_option_context_set_summary (context, summary->str);
+
+  g_string_free (summary, TRUE);
+
+  return context;
+}
+
+gboolean
+option_context_parse (GOptionContext *context,
+                      const GOptionEntry *main_entries,
+                      int *argc,
+                      char ***argv,
+                      GCancellable *cancellable,
+                      GError **error)
+{
+  gboolean ret = FALSE;
+
+  if (main_entries != NULL)
+    g_option_context_add_main_entries (context, main_entries, NULL);
+
+  g_option_context_add_main_entries (context, global_entries, NULL);
+
+  if (!g_option_context_parse (context, argc, argv, error))
+    return FALSE;
+
+  if (opt_version)
+    {
+      g_print ("%s\n  +default\n", PACKAGE_STRING);
+      exit (EXIT_SUCCESS);
+    }
+
+
+  ret = TRUE;
+out:
+  return ret;
+}
+
+gboolean
+submain (struct EvTag *self,
+         int    argc,
+         char **argv,
+         GError **error)
+{
+  gboolean ret = FALSE;
+  GCancellable *cancellable = NULL;
+  const char *command_name = NULL;
+  g_autofree char *prgname = NULL;
+  int in, out;
+
+  /*
+   * Parse the global options. We rearrange the options as
+   * necessary, in order to pass relevant options through
+   * to the commands, but also have them take effect globally.
+   */
+
+  for (in = 1, out = 1; in < argc; in++, out++)
+    {
+      /* The non-option is the command, take it out of the arguments */
+      if (argv[in][0] != '-')
+        {
+          if (command_name == NULL)
+            {
+              command_name = argv[in];
+              out--;
+              continue;
+            }
+        }
+
+      else if (g_str_equal (argv[in], "--"))
+        {
+          break;
+        }
+
+      argv[out] = argv[in];
+    }
+
+  argc = out;
+
+  command = commands;
+  while (command->name)
+    {
+      if (g_strcmp0 (command_name, command->name) == 0)
+        break;
+      command++;
+    }
+
+  if (!command->fn)
+    {
+      GOptionContext *context;
+      g_autofree char *help;
+
+      context = option_context_new_with_commands (commands);
+
+      /* This will not return for some options (e.g. --version). */
+      if (option_context_parse (context, NULL, &argc, &argv, cancellable, error))
+        {
+          if (command_name == NULL)
+            {
+              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "No command specified");
+            }
+          else
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Unknown command '%s'", command_name);
+            }
+        }
+
+      help = g_option_context_get_help (context, FALSE, NULL);
+      g_printerr ("%s", help);
+
+      g_option_context_free (context);
+
+      goto out;
+    }
+
+  prgname = g_strdup_printf ("%s %s", g_get_prgname (), command_name);
+  g_set_prgname (prgname);
+  
+  if (!command->fn (self, argc, argv, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+int
+main (int    argc,
+      char **argv)
+{
+  GError *local_error = NULL;
+  GError **error = &local_error;
+  GCancellable *cancellable = NULL;
+  git_repository *repo = NULL;
+  git_tag *tag;
+  char commit_oid_hexstr[GIT_OID_HEXSZ+1];
+  GOptionContext *context;
+  int r;
+  git_status_options statusopts = GIT_STATUS_OPTIONS_INIT;
+  struct EvTag self = { NULL, };
+  gboolean verifying;
+  
+  /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
+  g_setenv ("GIO_USE_VFS", "local", TRUE);
+
+  git_threads_init();
+
+  r = git_repository_open (&self.top_repo, ".");
+  if (!handle_libgit_ret (r, error))
+    goto out;
+
+  r = git_status_init_options (&statusopts, GIT_STATUS_OPTIONS_VERSION);
+  if (!handle_libgit_ret (r, error))
+    goto out;
+
+  {
+    struct TreeWalkData twdata = { FALSE, &self, repo, NULL, cancellable, error };
+    r = git_status_foreach_ext (repo, &statusopts, status_cb, &twdata);
+    if (twdata.caught_error)
+      goto out;
+    if (!handle_libgit_ret (r, error))
+      goto out;
+  }
+
+  self.checksum = g_checksum_new (G_CHECKSUM_SHA512); 
+
+  if (!submain (argc, argc, error))
+    goto out;
+
+  git_oid_fmt (commit_oid_hexstr, &specified_oid);
+  commit_oid_hexstr[sizeof(commit_oid_hexstr)-1] = '\0';
+
     }
 
  out:
