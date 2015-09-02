@@ -33,11 +33,11 @@ echo "ok setup"
 git clone repos/coolproject
 cd coolproject
 git submodule update --init
-with_editor_script git evtag -u 472CDAFA v2015.1
+with_editor_script git evtag sign -u 472CDAFA v2015.1
 git show refs/tags/v2015.1 > tag.txt
 TAG='Git-EVTag-v0-SHA512: 58e9834248c054f844f00148a030876f77eb85daa3caa15a20f3061f181403bae7b7e497fca199d25833b984c60f3202b16ebe0ed3a36e6b82f33618d75c569d'
 assert_file_has_content tag.txt "${TAG}"
-with_editor_script git evtag --verify v2015.1 | tee verify.out
+with_editor_script git evtag verify v2015.1 | tee verify.out
 assert_file_has_content verify.out "Successfully verified: ${TAG}"
 ${SRCDIR}/git-evtag-compute-py HEAD > tag-py.txt
 assert_file_has_content tag-py.txt "${TAG}"
@@ -53,15 +53,15 @@ git clone repos/coolproject
 cd coolproject
 git submodule update --init
 echo 'super cool' > src/cool.c
-if with_editor_script git evtag -u 472CDAFA v2015.1 2>err.txt; then
+if with_editor_script git evtag sign -u 472CDAFA v2015.1 2>err.txt; then
     assert_not_reached "expected failure due to dirty tree"
 fi
 assert_file_has_content err.txt 'Attempting to tag or verify dirty tree'
 git checkout src/cool.c
 # But untracked files are ok
 touch unknownfile
-with_editor_script git evtag -u 472CDAFA v2015.1
-git evtag --verify v2015.1
+with_editor_script git evtag sign -u 472CDAFA v2015.1
+git evtag verify v2015.1
 echo 'ok no tag on dirty tree'
 
 
@@ -70,21 +70,9 @@ rm coolproject -rf
 git clone repos/coolproject
 cd coolproject
 git submodule update --init
-if with_editor_script git evtag -u 472CDAFA v2015.1 HEAD^ 2>err.txt; then
-    assert_not_reached 'Expected failure due to non HEAD'
-fi
-assert_file_has_content err.txt "Target.*is not HEAD"
-echo 'ok no tag on non-HEAD'
-
-
-cd ${test_tmpdir}
-rm coolproject -rf
-git clone repos/coolproject
-cd coolproject
-git submodule update --init
-with_editor_script git evtag -u 472CDAFA v2015.1
+with_editor_script git evtag sign -u 472CDAFA v2015.1
 git checkout -q HEAD^
-if git evtag --verify v2015.1 2>err.txt; then
+if git evtag verify v2015.1 2>err.txt; then
     assert_not_reached 'Expected failure due to non HEAD'
 fi
 assert_file_has_content err.txt "Target.*is not HEAD"
@@ -95,12 +83,12 @@ rm coolproject -rf
 git clone repos/coolproject
 cd coolproject
 git submodule update --init
-with_editor_script git evtag --with-legacy-archive-tag -u 472CDAFA v2015.1
+with_editor_script git evtag sign --with-legacy-archive-tag -u 472CDAFA v2015.1
 git show refs/tags/v2015.1 > tag.txt
 assert_file_has_content tag.txt 'ExtendedVerify-SHA256-archive-tar: 83991ee23a027d97ad1e06432ad87c6685e02eac38706e7fbfe6e5e781939dab'
 gitversion=$(git --version)
 assert_file_has_content tag.txt "ExtendedVerify-git-version: ${gitversion}"
-with_editor_script git evtag --verify v2015.1 | tee verify.out
+with_editor_script git evtag verify v2015.1 | tee verify.out
 assert_file_has_content verify.out 'Successfully verified: Git-EVTag-v0-SHA512: 58e9834248c054f844f00148a030876f77eb85daa3caa15a20f3061f181403bae7b7e497fca199d25833b984c60f3202b16ebe0ed3a36e6b82f33618d75c569d'
 rm -f tag.txt
 rm -f verify.out
@@ -111,15 +99,15 @@ rm coolproject -rf
 git clone repos/coolproject
 cd coolproject
 git submodule update --init
-with_editor_script git evtag --no-sign v2015.1
+with_editor_script git evtag sign --no-signature v2015.1
 git show refs/tags/v2015.1 > tag.txt
 assert_file_has_content tag.txt 'Git-EVTag-v0-SHA512: 58e9834248c054f844f00148a030876f77eb85daa3caa15a20f3061f181403bae7b7e497fca199d25833b984c60f3202b16ebe0ed3a36e6b82f33618d75c569d'
 assert_not_file_has_content tag.txt '-----BEGIN PGP SIGNATURE-----'
-if git evtag --verify v2015.1 2>err.txt; then
+if git evtag verify v2015.1 2>err.txt; then
     assert_not_reached 'Expected failure due to no GPG signature'
 fi
 assert_file_has_content err.txt "no signature found"
-git evtag --verify-only-checksum v2015.1
+git evtag verify --no-signature v2015.1
 rm -f tag.txt
 rm -f verify.out
 echo "ok checksum-only tag + verify"
