@@ -1,6 +1,6 @@
 # git-evtag
 
-`git-evtag` can be used as a drop-in replacement for `git-tag -s`.  It
+`git-evtag` can be used as a replacement for `git-tag -s`.  It
 will generate a strong checksum (called `Git-EVTag-v0-SHA512`) over the
 commit, tree, and blobs it references (and recursively over submodules).
 
@@ -15,7 +15,7 @@ Create a new `v2015.10` tag, covering the `HEAD` revision with GPG
 signature and `Git-EVTag-v0-SHA512`:
 
 ```
-$ git-evtag v2015.10
+$ git-evtag sign v2015.10
  ( type your tag message, note a Git-EVTag-v0-SHA512 line in the message )
 $ git show v2015.10
  ( Note signature covered by GPG signature )
@@ -24,7 +24,7 @@ $ git show v2015.10
 Verify a tag:
 
 ```
-$ git-evtag --verify v2015.10
+$ git-evtag verify v2015.10
 gpg: Signature made Sun 28 Jun 2015 10:49:11 AM EDT
 gpg:                using RSA key 0xDC45FD5921C13F0B
 gpg: Good signature from "Colin Walters <walters@redhat.com>" [ultimate]
