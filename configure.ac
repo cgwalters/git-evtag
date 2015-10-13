@@ -31,6 +31,10 @@ LT_INIT([disable-static])
 
 PKG_PROG_PKG_CONFIG
 PKG_CHECK_MODULES(BUILDDEP_LIBGIT_GLIB, [libgit2 gio-2.0])
+save_LIBS=$LIBS
+LIBS=$BUILDDEP_LIBGIT_GLIB_LIBS
+AC_CHECK_FUNCS(git_libgit2_init)
+LIBS=$save_LIBS
 
 AC_ARG_ENABLE(installed_tests,
               AS_HELP_STRING([--enable-installed-tests],

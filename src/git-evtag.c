@@ -975,7 +975,11 @@ main (int    argc,
   /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
   g_setenv ("GIO_USE_VFS", "local", TRUE);
 
-  git_threads_init();
+#ifdef HAVE_GIT_LIBGIT2_INIT
+  git_libgit2_init ();
+#else
+  git_threads_init ();
+#endif
 
   r = git_repository_open (&self.top_repo, ".");
   if (!handle_libgit_ret (r, error))
