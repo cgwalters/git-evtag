@@ -6,6 +6,8 @@ Release: 1%{?dist}
 Source0: %{name}-%{version}.tar.xz
 License: LGPLv2+
 URL: https://github.com/cgwalters/git-evtag
+# For autosetup
+BuildRequires: git
 # We always run autogen.sh
 BuildRequires: autoconf automake libtool
 
