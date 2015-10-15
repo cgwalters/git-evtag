@@ -1,0 +1,31 @@
+Summary: Strong GPG verification of git tags
+Name: git-evtag
+Version: 2015.1
+Release: 1%{?dist}
+#VCS: https://github.com/cgwalters/git-evtag
+Source0: %{name}-%{version}.tar.xz
+License: LGPLv2+
+URL: https://github.com/cgwalters/git-evtag
+# We always run autogen.sh
+BuildRequires: autoconf automake libtool
+
+BuildRequires: pkgconfig(libgit2)
+BuildRequires: pkgconfig(gio-2.0)
+
+%description
+%{summary}
+
+%prep
+%autosetup -Sgit
+
+%build
+env NOCONFIGURE=1 ./autogen.sh
+%configure --disable-silent-rules
+make %{?_smp_mflags}
+
+%install
+make install DESTDIR=%{buildroot} INSTALL="install -p -c"
+
+%files
+%doc COPYING README.md
+%{_bindir}/%{name}

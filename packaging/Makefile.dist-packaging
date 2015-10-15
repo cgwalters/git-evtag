@@ -30,4 +30,4 @@ srpm: dist-snapshot
 	 ./rpmbuild-cwd -bs $(PACKAGE).spec
 
 rpm: srpm
-	$(srcdir)/rpmbuild-cwd --rebuild $(PKG_VER)*.src.rpm
+	./rpmbuild-cwd --rebuild $(PKG_VER)*.src.rpm
