@@ -54,11 +54,15 @@ static gboolean opt_no_signature;
 static gboolean opt_with_legacy_archive_tag;
 static char *opt_keyid;
 
+static GOptionEntry global_entries[] = {
+  { "version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Print version information and exit", NULL },
+  { NULL }
+};
+
 static GOptionEntry sign_options[] = {
   { "print-only", 0, 0, G_OPTION_ARG_NONE, &opt_print_only, "Don't create a tag, just compute and print evtag data", NULL },
   { "no-signature", 0, 0, G_OPTION_ARG_NONE, &opt_no_signature, "Do create or verify GPG signature", NULL },
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Print statistics on what we're hashing", NULL },
-  { "version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Display version number", NULL },
   { "local-user", 'u', 0, G_OPTION_ARG_STRING, &opt_keyid, "Use the given GPG KEYID", "KEYID" },
   { "with-legacy-archive-tag", 'u', 0, G_OPTION_ARG_NONE, &opt_with_legacy_archive_tag, "Also append a legacy variant of the checksum using `git archive`", NULL },
   { NULL }
@@ -66,7 +70,6 @@ static GOptionEntry sign_options[] = {
 
 static GOptionEntry verify_options[] = {
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Print statistics on what we're hashing", NULL },
-  { "version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Display version number", NULL },
   { "no-signature", 0, 0, G_OPTION_ARG_NONE, &opt_no_signature, "Do create or verify GPG signature", NULL },
   { NULL }
 };
@@ -83,6 +86,8 @@ option_context_parse (GOptionContext *context,
 
   if (main_entries != NULL)
     g_option_context_add_main_entries (context, main_entries, NULL);
+
+  g_option_context_add_main_entries (context, global_entries, NULL);
 
   if (!g_option_context_parse (context, argc, argv, error))
     goto out;
@@ -877,11 +882,13 @@ submain (struct EvTag *self,
          GError **error)
 {
   gboolean ret = FALSE;
+  git_status_options statusopts = GIT_STATUS_OPTIONS_INIT;
   GCancellable *cancellable = NULL;
   const char *command_name = NULL;
   Subcommand *command;
   char *prgname = NULL;
   int in, out;
+  int r;
 
   /*
    * Parse the global options. We rearrange the options as
@@ -952,7 +959,26 @@ submain (struct EvTag *self,
 
   prgname = g_strdup_printf ("%s %s", g_get_prgname (), command_name);
   g_set_prgname (prgname);
-  
+
+  r = git_repository_open (&self->top_repo, ".");
+  if (!handle_libgit_ret (r, error))
+    goto out;
+
+  r = git_status_init_options (&statusopts, GIT_STATUS_OPTIONS_VERSION);
+  if (!handle_libgit_ret (r, error))
+    goto out;
+
+  {
+    struct TreeWalkData twdata = { FALSE, self, self->top_repo, NULL, cancellable, error };
+    r = git_status_foreach_ext (self->top_repo, &statusopts, status_cb, &twdata);
+    if (twdata.caught_error)
+      goto out;
+    if (!handle_libgit_ret (r, error))
+      goto out;
+  }
+
+  self->checksum = g_checksum_new (G_CHECKSUM_SHA512); 
+
   if (!command->fn (self, argc, argv, cancellable, error))
     goto out;
 
@@ -967,9 +993,6 @@ main (int    argc,
 {
   GError *local_error = NULL;
   GError **error = &local_error;
-  GCancellable *cancellable = NULL;
-  int r;
-  git_status_options statusopts = GIT_STATUS_OPTIONS_INIT;
   struct EvTag self = { NULL, };
   
   /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
@@ -980,25 +1003,6 @@ main (int    argc,
 #else
   git_threads_init ();
 #endif
-
-  r = git_repository_open (&self.top_repo, ".");
-  if (!handle_libgit_ret (r, error))
-    goto out;
-
-  r = git_status_init_options (&statusopts, GIT_STATUS_OPTIONS_VERSION);
-  if (!handle_libgit_ret (r, error))
-    goto out;
-
-  {
-    struct TreeWalkData twdata = { FALSE, &self, self.top_repo, NULL, cancellable, error };
-    r = git_status_foreach_ext (self.top_repo, &statusopts, status_cb, &twdata);
-    if (twdata.caught_error)
-      goto out;
-    if (!handle_libgit_ret (r, error))
-      goto out;
-  }
-
-  self.checksum = g_checksum_new (G_CHECKSUM_SHA512); 
 
   if (!submain (&self, argc, argv, error))
     goto out;
