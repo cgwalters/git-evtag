@@ -1,0 +1,4 @@
+language: c
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libglib2.0-dev libgit2-dev
