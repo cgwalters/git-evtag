@@ -34,28 +34,40 @@ Primary key fingerprint: 1CEC 7A9D F7DA 85AB EF84  3DC0 A866 D7CC AE08 7291
 Successfully verified: Git-EVTag-v0-SHA512: b05f10f9adb0eff352d90938588834508d33fdfcedbcfc332999ee397efa321d1f49a539f1b82f024111a281c1f441002e7f536b06eb04d41857b01636f6f268
 ```
 
-### Replacing tarballs
+### Replacing tarballs - i.e. be the primary artifact
 
 This is similar to what project distributors often accomplish by using
 `git archive`, or `make dist`, or similar tools to generate a tarball,
 and then checksumming that, and (ideally) providing a GPG signature
 covering it.
 
+### Tarball reproducibility
+
 The problem with `git archive` and `make dist` is that tarballs (and
 other tools like zip files) are not easily reproducible *exactly* from
 a git repository commit.  The authors of git reserve the right to
-change the file format output by `git archive` in the future.
+change the file format output by `git archive` in the future.  Also,
+there are a variety of reasons why compressors like `gzip` and `xz`
+aren't necessarily reproducible, such as compression levels, included
+timestamps, optimizations in the algorithm, etc.  See
+[Pristine tar](http://git.kitenet.net/?p=zzattic/pristine-tar.git;a=summary)
+for some examples of the difficulties involved (e.g. trying to
+retroactively guess the compression level arguments from the xz
+dictionary size).
 
-This means that the checksum is not reproducible, which makes it much
-more difficult to reliably verify that a generated tarball is exactly
-the same as a particular git commit.
+If the checksum is not reproducible, it becomes much more difficult to
+easily and reliably verify that a generated tarball contains the same
+source code as a particular git commit.
 
-What `git-evtag` allows is implementing a similar model with git
-itself, computing a strong checksum over the complete source objects for
-the target commit (+ trees + blobs + submodules).
+What `git-evtag` implements is an algorithm for providing a strong
+checksum over the complete source objects for the target commit (+
+trees + blobs + submodules).  Then it's integrated with GPG for
+end-to-end verification.  (Although, one could also wrap the commit in
+X.509 or some other public/private signature solution).
 
-Then no out of band distribution mechanism is necessary - git already
-supports GPG signatures for tags.
+Then no out of band distribution mechanism is necessary, and better,
+the checksums strengthen the ability to verify integrity of the git
+repository.
 
 (And if you want to avoid downloading the entire history, that's what
 `git clone --depth=1` is for.)
