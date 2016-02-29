@@ -172,7 +172,7 @@ checksum_odb_object (struct EvTag  *self,
   char *header;
   size_t headerlen;
 
-  header = g_strdup_printf ("%s %" G_GUINT64_FORMAT, otypestr, size);
+  header = g_strdup_printf ("%s %" G_GSIZE_FORMAT, otypestr, size);
   /* Also include the trailing NUL byte */
   headerlen = strlen (header) + 1;
   g_checksum_update (self->checksum, (guint8*)header, headerlen);
