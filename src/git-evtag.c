@@ -960,7 +960,7 @@ submain (struct EvTag *self,
   prgname = g_strdup_printf ("%s %s", g_get_prgname (), command_name);
   g_set_prgname (prgname);
 
-  r = git_repository_open (&self->top_repo, ".");
+  r = git_repository_open_ext (&self->top_repo, ".", 0, NULL);
   if (!handle_libgit_ret (r, error))
     goto out;
 

@@ -39,13 +39,15 @@ TAG='Git-EVTag-v0-SHA512: 58e9834248c054f844f00148a030876f77eb85daa3caa15a20f306
 assert_file_has_content tag.txt "${TAG}"
 with_editor_script git evtag verify v2015.1 | tee verify.out
 assert_file_has_content verify.out "Successfully verified: ${TAG}"
+# Also test subdirectory
+(cd src && with_editor_script git evtag verify v2015.1 | tee ../verify2.out)
+assert_file_has_content verify2.out "Successfully verified: ${TAG}"
 ${SRCDIR}/git-evtag-compute-py HEAD > tag-py.txt
 assert_file_has_content tag-py.txt "${TAG}"
 
 rm -f tag.txt
 rm -f verify.out
 echo "ok tag + verify"
-
 
 cd ${test_tmpdir}
 rm coolproject -rf
