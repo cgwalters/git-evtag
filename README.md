@@ -62,8 +62,8 @@ source code as a particular git commit.
 What `git-evtag` implements is an algorithm for providing a strong
 checksum over the complete source objects for the target commit (+
 trees + blobs + submodules).  Then it's integrated with GPG for
-end-to-end verification.  (Although, one could also wrap the commit in
-X.509 or some other public/private signature solution).
+end-to-end verification.  (Although, one could also wrap the checksum
+in X.509 or some other public/private signature solution).
 
 Then no out of band distribution mechanism is necessary, and better,
 the checksums strengthen the ability to verify integrity of the git
