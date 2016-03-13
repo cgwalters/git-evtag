@@ -1,0 +1,3 @@
+language: c
+install: true
+script: test '!' -f broken.txt
