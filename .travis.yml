@@ -1,3 +1,8 @@
+# We're just using a "stubbed out" Travis right now so we can
+# use Homu <https://github.com/barosl/homu> to auto-squash
+# etc.
+# The problem is the Ubuntu package of libgit2 is old,
+# and anyways I want to test with Fedora/CentOS content.
 language: c
 install: true
 script: test '!' -f broken.txt
