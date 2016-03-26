@@ -1,0 +1,6 @@
+There are currently 3 independent implementations of `git-evtag` that
+live in this source tree.
+
+ - src/git-evtag.c (LGPLv2+)
+ - src/git-evtag-compute-py (LGPLv2+)
+ - src/rust (MIT or Apache 2.0, same as Rust)

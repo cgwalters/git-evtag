@@ -33,4 +33,5 @@ typelibdir = $(pkglibdir)/girepository-1.0
 typelib_DATA = $(gir_DATA:.gir=.typelib)
 
 include src/Makefile-git-evtag.am
+include rust/Makefile-inc.am
 include tests/Makefile-tests.am
