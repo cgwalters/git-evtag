@@ -25,6 +25,8 @@ AM_CPPFLAGS += -DDATADIR='"$(datadir)"' \
 	-DLOCALEDIR=\"$(datadir)/locale\"
 AM_CFLAGS += $(WARN_CFLAGS)
 
+GITIGNOREFILES += build-aux/ m4/ gtk-doc.make config.h.in aclocal.m4
+
 include $(INTROSPECTION_MAKEFILE)
 
 girdir = $(pkgdatadir)/gir-1.0
@@ -34,3 +36,5 @@ typelib_DATA = $(gir_DATA:.gir=.typelib)
 
 include src/Makefile-git-evtag.am
 include tests/Makefile-tests.am
+
+-include $(top_srcdir)/git.mk
