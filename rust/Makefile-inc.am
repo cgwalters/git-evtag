@@ -1,0 +1,4 @@
+bin_PROGRAMS += git-rustevtag
+
+git-rustevtag: rust/src/main.rs rust/Cargo.toml
+	(cd rust && cargo build) && cp rust/target/debug/git-rustevtag .

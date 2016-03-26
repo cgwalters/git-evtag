@@ -1,0 +1,21 @@
+[package]
+name = "rust"
+version = "0.1.0"
+authors = ["Colin Walters <walters@verbum.org>"]
+
+[dependencies]
+# git2 = "0.4"
+openssl = "0.7"
+docopt = "0.6"
+rustc-serialize = "0.3"
+
+[dependencies.git2]
+path = "/home/walters/src/github/alexcrichton/git2-rs"
+
+[dependencies.libgit2-sys]
+path = "/home/walters/src/github/alexcrichton/git2-rs/libgit2-sys"
+
+[[bin]]
+name = "git-rustevtag"
+test = false
+doc = false

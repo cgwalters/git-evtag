@@ -36,6 +36,18 @@ LIBS=$BUILDDEP_LIBGIT_GLIB_LIBS
 AC_CHECK_FUNCS(git_libgit2_init)
 LIBS=$save_LIBS
 
+AS_IF([test "$enable_rust" != no], [
+  AC_PATH_PROG([CARGO], [cargo])
+  AS_IF([test -z "$CARGO"], [
+    AS_IF([test "$enable_rust" = yes], [
+      AC_MSG_ERROR([cargo is required for --enable-rust])
+    ])
+    enable_rust=no
+  ])
+  enable_rust=yes
+])
+AM_CONDITIONAL(ENABLE_RUST, test "$enable_rust" != no)
+
 AC_ARG_ENABLE(installed_tests,
               AS_HELP_STRING([--enable-installed-tests],
                              [Install test programs (default: no)]),,
@@ -51,4 +63,5 @@ echo "
     $PACKAGE $VERSION
 
     installed tests:                         $enable_installed_tests
+    Rust implementation:                     $enable_rust
 "
