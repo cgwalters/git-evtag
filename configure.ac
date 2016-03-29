@@ -36,6 +36,10 @@ LIBS=$BUILDDEP_LIBGIT_GLIB_LIBS
 AC_CHECK_FUNCS(git_libgit2_init)
 LIBS=$save_LIBS
 
+AC_ARG_ENABLE(rust,
+              [AS_HELP_STRING([--enable-rust],
+                              [Compile Rust version [default=no]])],,
+              enable_rust=no)
 AS_IF([test "$enable_rust" != no], [
   AC_PATH_PROG([CARGO], [cargo])
   AS_IF([test -z "$CARGO"], [
