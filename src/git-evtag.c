@@ -243,6 +243,9 @@ checksum_tree_callback (const char *root,
   struct TreeWalkData *twdata = data;
   git_otype otype = git_tree_entry_type (entry);
 
+  if (twdata->caught_error)
+    return -1;
+
   switch (otype)
     {
     case GIT_OBJ_TREE:
@@ -274,7 +277,7 @@ checksum_tree_callback (const char *root,
 
   iter_r = 0;
  out:
-  if (iter_r > 0)
+  if (iter_r != 0)
     twdata->caught_error = TRUE;
   return iter_r;
 }
@@ -331,7 +334,10 @@ checksum_submodule (struct TreeWalkData *parent_twdata, git_submodule *sub)
   
   r = git_submodule_open (&child_twdata.repo, sub);
   if (!handle_libgit_ret (r, child_twdata.error))
-    goto out;
+    {
+      g_prefix_error (child_twdata.error, "Missing `git submodule update --init`? ");
+      goto out;
+    }
 
   r = git_repository_odb (&child_twdata.odb, child_twdata.repo);
   if (!handle_libgit_ret (r, child_twdata.error))
@@ -345,8 +351,8 @@ checksum_submodule (struct TreeWalkData *parent_twdata, git_submodule *sub)
 
   r = 0;
  out:
-  if (r > 0)
-    child_twdata.caught_error = TRUE;
+  if (r < 0)
+    parent_twdata->caught_error = TRUE;
   if (child_twdata.repo)
     git_repository_free (child_twdata.repo);
   if (child_twdata.odb)
