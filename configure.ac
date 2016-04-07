@@ -36,6 +36,23 @@ LIBS=$BUILDDEP_LIBGIT_GLIB_LIBS
 AC_CHECK_FUNCS(git_libgit2_init)
 LIBS=$save_LIBS
 
+AC_ARG_ENABLE(man,
+              [AS_HELP_STRING([--enable-man],
+                              [generate man pages [default=auto]])],,
+              enable_man=maybe)
+
+AS_IF([test "$enable_man" != no], [
+  AC_PATH_PROG([XSLTPROC], [xsltproc])
+  AS_IF([test -z "$XSLTPROC"], [
+    AS_IF([test "$enable_man" = yes], [
+      AC_MSG_ERROR([xsltproc is required for --enable-man])
+    ])
+    enable_man=no
+  ])
+  enable_man=yes
+])
+AM_CONDITIONAL(ENABLE_MAN, test "$enable_man" != no)
+
 AC_ARG_ENABLE(rust,
               [AS_HELP_STRING([--enable-rust],
                               [Compile Rust version [default=no]])],,
@@ -66,6 +83,7 @@ AC_OUTPUT
 echo "
     $PACKAGE $VERSION
 
+    man pages (xsltproc):                    $enable_man
     installed tests:                         $enable_installed_tests
     Rust implementation:                     $enable_rust
 "
