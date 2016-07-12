@@ -1,17 +1,15 @@
-%global commit0 74fb3c0814152de193bac65a53b86a08a25ecb79
-%global gittag0 v2016.1
-%global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
-
 Summary: Strong GPG verification of git tags
 Name: git-evtag
 Version: 2016.1
 Release: 1%{?dist}
-#VCS: https://github.com/cgwalters/git-evtag
-Source0: https://github.com/cgwalters/git-evtag/archive/%{gittag0}.tar.gz#/%{name}-%{version}.tar.gz
+
 License: LGPLv2+
+#VCS: https://github.com/cgwalters/git-evtag
 URL: https://github.com/cgwalters/git-evtag
-# For autosetup
-BuildRequires: git
+Source0: %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
+
+BuildRequires: gcc
+
 # We always run autogen.sh
 BuildRequires: autoconf automake libtool
 
@@ -26,7 +24,7 @@ git-evtag wraps "git tag" functionality, adding stronger checksums
 that cover the complete content.
 
 %prep
-%autosetup -Sgit
+%autosetup
 
 %build
 env NOCONFIGURE=1 ./autogen.sh
