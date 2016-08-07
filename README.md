@@ -90,6 +90,8 @@ round variants of SHA1.  We expect git repositories to be used for
 many, many years to come.  It makes a lot of sense to take additional
 steps now to add security.
 
+See also: [When Will We See Collisions for SHA-1?](https://www.schneier.com/blog/archives/2012/10/when_will_we_se.html)
+
 ### The Git-EVTag algorithm (v0)
 
 There is currently only one version of the `Git-EVTag` algorithm,
