@@ -7,8 +7,8 @@ test -n "$srcdir" || srcdir=.
 olddir="$(pwd)"
 cd "$srcdir"
 
-AUTORECONF=`which autoreconf`
-if test -z $AUTORECONF; then
+if ! command -v autoreconf >/dev/null 2>&1
+then
         echo "*** No autoreconf found, please intall it ***"
         exit 1
 fi
