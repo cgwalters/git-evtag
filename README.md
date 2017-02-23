@@ -9,6 +9,14 @@ Git mailing list thread:
  - permalink: http://permalink.gmane.org/gmane.comp.version-control.git/264533
  - comments: http://comments.gmane.org/gmane.comp.version-control.git/264533
 
+
+### Getting git-evtag
+
+See also the [the Node.js implementation](https://github.com/indutny/git-secure-tag).
+
+ - [Fedora package](https://admin.fedoraproject.org/pkgdb/package/rpms/git-evtag/)
+ - Building from source: Requires glib2 and libgit2.
+
 ### Using git-evtag
 
 Create a new `v2015.10` tag, covering the `HEAD` revision with GPG
