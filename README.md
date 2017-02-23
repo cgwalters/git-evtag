@@ -82,6 +82,11 @@ repository.
 
 ### Git and SHA1
 
+NEW!  The first SHA1 collision was announced February 23, 2017:
+
+ - https://security.googleblog.com/2017/02/announcing-first-sha1-collision.html
+ - http://shattered.io/
+
 Git uses a modified Merkle tree with SHA1, which means that if an
 attacker managed to create a SHA1 collision for a source file object
 (git blob), it would affect *all* revisions and checkouts -
@@ -91,14 +96,6 @@ to that object.
 Now, the author of this tool believes that *today*, GPG signed git
 tags are fairly secure, especially if one is careful to ensure
 transport integrity (e.g. pinned TLS certificates from the origin).
-
-That said, while it is true that at the time of this writing, no
-public SHA1 collision is known, there are attacks against reduced
-round variants of SHA1.  We expect git repositories to be used for
-many, many years to come.  It makes a lot of sense to take additional
-steps now to add security.
-
-See also: [When Will We See Collisions for SHA-1?](https://www.schneier.com/blog/archives/2012/10/when_will_we_se.html)
 
 ### The Git-EVTag algorithm (v0)
 
