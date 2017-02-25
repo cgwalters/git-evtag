@@ -6,9 +6,8 @@ commit, tree, and blobs it references (and recursively over submodules).
 
 Git mailing list thread:
 
- - permalink: http://permalink.gmane.org/gmane.comp.version-control.git/264533
- - comments: http://comments.gmane.org/gmane.comp.version-control.git/264533
-
+ - [marc.info](https://marc.info/?l=git&m=142513489318999&w=3)
+ - [nabble.com](http://git.661346.n2.nabble.com/weaning-distributions-off-tarballs-extended-verification-of-git-tags-td7626117.html)
 
 ### Getting git-evtag
 
