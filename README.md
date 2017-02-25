@@ -3,8 +3,13 @@
 `git-evtag` can be used as a replacement for `git-tag -s`.  It
 will generate a strong checksum (called `Git-EVTag-v0-SHA512`) over the
 commit, tree, and blobs it references (and recursively over submodules).
+A primary rationale for this is that the underlying SHA1 algorithm of
+git is [under increasing threat](https://marc.info/?l=git&m=148786876821543&w=2).
+Further, a goal here is to create a checksum that covers the entire source of
+a single revision as a replacement for tarballs + checksums.
 
-Git mailing list thread:
+git-evtag was originally discussed (long before the SHA1 collision of February 2017)
+on the git mailing list:
 
  - [marc.info](https://marc.info/?l=git&m=142513489318999&w=3)
  - [nabble.com](http://git.661346.n2.nabble.com/weaning-distributions-off-tarballs-extended-verification-of-git-tags-td7626117.html)
