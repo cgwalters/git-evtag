@@ -6,7 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate docopt;
+#[macro_use]
+extern crate clap;
 extern crate git2;
 extern crate openssl;
 extern crate rustc_serialize;
@@ -15,16 +16,14 @@ use std::process::Command;
 use std::io::Write;
 use git2::{Commit, Error, Object, ObjectType, Oid, Repository, Submodule, Tree};
 use std::error::Error as StdError;
-use docopt::Docopt;
 #[allow(unused_imports)]
 use openssl::crypto::hash::Hasher;
 use rustc_serialize::hex::ToHex;
 
 const EVTAG_SHA512: &'static str = "Git-EVTag-v0-SHA512:";
 
-#[derive(RustcDecodable)]
-struct Args {
-    arg_tagname: String,
+struct Args<'a> {
+    arg_tagname: &'a str,
     flag_no_signature: bool,
 }
 
@@ -156,17 +155,16 @@ fn run(args: &Args) -> Result<(), Error> {
 }
 
 fn main() {
-    const USAGE: &'static str = "
-usage:
-    git-evtag verify [-n] <tagname>
+    let matches = clap_app!(git_evtag =>
+        (@arg no_signature: -n --no-signature "Do not verify GPG signature")
+        (@arg TAGNAME: +required "Tag name")
+    ).get_matches();
 
-Options:
-    -n, --no-signature                 Do not verify GPG signature
-";
+    let args = Args {
+        flag_no_signature: matches.is_present("no_signature"),
+        arg_tagname: matches.value_of("TAGNAME").unwrap(),
+    };
 
-    let args = Docopt::new(USAGE)
-        .and_then(|d| d.decode())
-        .unwrap_or_else(|e| e.exit());
     match run(&args) {
         Ok(()) => {}
         Err(e) => println!("error: {}", e),
