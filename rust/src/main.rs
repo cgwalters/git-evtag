@@ -12,10 +12,11 @@ extern crate git2;
 extern crate openssl;
 extern crate rustc_serialize;
 
-use std::process::Command;
-use std::io::Write;
-use git2::{Commit, Error, Object, ObjectType, Oid, Repository, Submodule, Tree};
 use std::error::Error as StdError;
+use std::io::Write;
+use std::process::Command;
+
+use git2::{Commit, Error, Object, ObjectType, Oid, Repository, Submodule, Tree};
 use openssl::hash::Hasher;
 use rustc_serialize::hex::ToHex;
 
@@ -37,9 +38,11 @@ impl EvTag {
         })
     }
 
-    fn checksum_object(&self, hash: &mut Hasher, object: &Object) -> Result<(), Error> {
-        let contentbuf = object.object_data()?;
-        let header = format!("{} {}", object.kind().unwrap().str(), contentbuf.len());
+    fn checksum_object(&self, object: &Object, hash: &mut Hasher) -> Result<(), Error> {
+        let odb = self.repo.odb()?;
+        let object = odb.read(object.id())?;
+        let contentbuf = object.data();
+        let header = format!("{} {}", object.kind().str(), contentbuf.len());
         hash.write(header.as_bytes()).unwrap();
         let nulbyte: [u8; 1] = [0; 1];
         hash.write(&nulbyte).unwrap();
@@ -56,7 +59,7 @@ impl EvTag {
     }
 
     fn checksum_tree(&self, repo: &Repository, tree: Tree, hash: &mut Hasher) -> Result<(), Error> {
-        self.checksum_object(hash, tree.as_object())?;
+        self.checksum_object(tree.as_object(), hash)?;
         for entry in tree.iter() {
             match entry
                 .kind()
@@ -64,7 +67,7 @@ impl EvTag {
             {
                 ObjectType::Blob => {
                     let object = repo.find_object(entry.id(), entry.kind())?;
-                    self.checksum_object(hash, &object)?
+                    self.checksum_object(&object, hash)?
                 }
                 ObjectType::Tree => {
                     let tree = repo.find_tree(entry.id())?;
@@ -87,7 +90,7 @@ impl EvTag {
         commit: Commit,
         hash: &mut Hasher,
     ) -> Result<(), Error> {
-        self.checksum_object(hash, commit.as_object())?;
+        self.checksum_object(commit.as_object(), hash)?;
         let tree = commit.tree()?;
         self.checksum_tree(repo, tree, hash)?;
         Ok(())
