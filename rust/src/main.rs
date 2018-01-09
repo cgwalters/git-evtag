@@ -17,7 +17,7 @@ use std::io::Write;
 use std::process::Command;
 
 use git2::{Commit, Error, Object, ObjectType, Oid, Repository, Submodule, Tree};
-use openssl::hash::Hasher;
+use openssl::hash::{DigestBytes, Hasher};
 use rustc_serialize::hex::ToHex;
 
 const EVTAG_SHA512: &'static str = "Git-EVTag-v0-SHA512:";
@@ -96,11 +96,11 @@ impl EvTag {
         Ok(())
     }
 
-    pub fn compute(&self, specified_oid: Oid) -> Result<Vec<u8>, Error> {
+    pub fn compute(&self, specified_oid: Oid) -> Result<DigestBytes, Error> {
         let mut hash = Hasher::new(openssl::hash::MessageDigest::sha512()).unwrap();
         let commit = self.repo.find_commit(specified_oid)?;
         self.checksum_commit_contents(&self.repo, commit, &mut hash)?;
-        Ok(hash.finish().unwrap())
+        Ok(hash.finish2().unwrap())
     }
 }
 
