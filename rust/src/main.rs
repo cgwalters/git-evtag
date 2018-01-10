@@ -38,8 +38,8 @@ impl EvTag {
         })
     }
 
-    fn checksum_object(&self, object: &Object, hash: &mut Hasher) -> Result<(), Error> {
-        let odb = self.repo.odb()?;
+    fn checksum_object(&self, repo: &Repository, object: &Object, hash: &mut Hasher) -> Result<(), Error> {
+        let odb = repo.odb()?;
         let object = odb.read(object.id())?;
         let contentbuf = object.data();
         let header = format!("{} {}", object.kind().str(), contentbuf.len());
@@ -59,7 +59,7 @@ impl EvTag {
     }
 
     fn checksum_tree(&self, repo: &Repository, tree: Tree, hash: &mut Hasher) -> Result<(), Error> {
-        self.checksum_object(tree.as_object(), hash)?;
+        self.checksum_object(repo, tree.as_object(), hash)?;
         for entry in tree.iter() {
             match entry
                 .kind()
@@ -67,7 +67,7 @@ impl EvTag {
             {
                 ObjectType::Blob => {
                     let object = repo.find_object(entry.id(), entry.kind())?;
-                    self.checksum_object(&object, hash)?
+                    self.checksum_object(repo, &object, hash)?
                 }
                 ObjectType::Tree => {
                     let tree = repo.find_tree(entry.id())?;
@@ -90,7 +90,7 @@ impl EvTag {
         commit: Commit,
         hash: &mut Hasher,
     ) -> Result<(), Error> {
-        self.checksum_object(commit.as_object(), hash)?;
+        self.checksum_object(repo, commit.as_object(), hash)?;
         let tree = commit.tree()?;
         self.checksum_tree(repo, tree, hash)?;
         Ok(())
