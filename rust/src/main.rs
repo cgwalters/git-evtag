@@ -9,8 +9,8 @@
 #[macro_use]
 extern crate clap;
 extern crate git2;
+extern crate hex;
 extern crate openssl;
-extern crate rustc_serialize;
 
 use std::error::Error as StdError;
 use std::io::Write;
@@ -18,7 +18,6 @@ use std::process::Command;
 
 use git2::{Commit, Error, Object, ObjectType, Oid, Repository, Submodule, Tree};
 use openssl::hash::{DigestBytes, Hasher};
-use rustc_serialize::hex::ToHex;
 
 const EVTAG_SHA512: &'static str = "Git-EVTag-v0-SHA512:";
 
@@ -128,7 +127,7 @@ fn run(args: &Args) -> Result<(), Error> {
         }
     }
 
-    let expected_checksum = evtag.compute(specified_oid)?.to_hex();
+    let expected_checksum = hex::encode(evtag.compute(specified_oid)?);
 
     let message = match tag.message() {
         Some(message) => message,
