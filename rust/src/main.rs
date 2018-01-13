@@ -99,7 +99,7 @@ impl EvTag {
         let mut hash = Hasher::new(openssl::hash::MessageDigest::sha512()).unwrap();
         let commit = self.repo.find_commit(specified_oid)?;
         self.checksum_commit_contents(&self.repo, &commit, &mut hash)?;
-        Ok(hash.finish2().unwrap())
+        Ok(hash.finish().unwrap())
     }
 }
 
