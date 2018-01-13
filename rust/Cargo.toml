@@ -7,7 +7,7 @@ authors = ["Colin Walters <walters@verbum.org>"]
 clap = "2"
 git2 = "0.6.11"
 hex = "0.3"
-openssl = "0.9"
+openssl = "0.10"
 
 [[bin]]
 name = "git-rustevtag"
