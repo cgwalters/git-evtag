@@ -19,7 +19,7 @@ use std::process::Command;
 use git2::{Commit, Error, Object, ObjectType, Oid, Repository, Submodule, Tree};
 use openssl::hash::{DigestBytes, Hasher};
 
-const EVTAG_SHA512: &'static str = "Git-EVTag-v0-SHA512:";
+const EVTAG_SHA512: &str = "Git-EVTag-v0-SHA512:";
 
 struct Args<'a> {
     arg_tagname: &'a str,
@@ -42,10 +42,10 @@ impl EvTag {
         let object = odb.read(object.id())?;
         let contentbuf = object.data();
         let header = format!("{} {}", object.kind().str(), contentbuf.len());
-        hash.write(header.as_bytes()).unwrap();
+        hash.write_all(header.as_bytes()).unwrap();
         let nulbyte: [u8; 1] = [0; 1];
-        hash.write(&nulbyte).unwrap();
-        hash.write(contentbuf).unwrap();
+        hash.write_all(&nulbyte).unwrap();
+        hash.write_all(contentbuf).unwrap();
         Ok(())
     }
 
@@ -53,11 +53,11 @@ impl EvTag {
         let subrepo = submodule.open()?;
         let sub_head = submodule.workdir_id().expect("Failed to find workdir id");
         let commit = subrepo.find_commit(sub_head)?;
-        self.checksum_commit_contents(&subrepo, commit, hash)?;
+        self.checksum_commit_contents(&subrepo, &commit, hash)?;
         Ok(())
     }
 
-    fn checksum_tree(&self, repo: &Repository, tree: Tree, hash: &mut Hasher) -> Result<(), Error> {
+    fn checksum_tree(&self, repo: &Repository, tree: &Tree, hash: &mut Hasher) -> Result<(), Error> {
         self.checksum_object(repo, tree.as_object(), hash)?;
         for entry in tree.iter() {
             match entry
@@ -70,7 +70,7 @@ impl EvTag {
                 }
                 ObjectType::Tree => {
                     let tree = repo.find_tree(entry.id())?;
-                    self.checksum_tree(repo, tree, hash)?;
+                    self.checksum_tree(repo, &tree, hash)?;
                 }
                 ObjectType::Commit => {
                     let submodule = repo.find_submodule(entry.name().unwrap())?;
@@ -86,19 +86,19 @@ impl EvTag {
     fn checksum_commit_contents(
         &self,
         repo: &Repository,
-        commit: Commit,
+        commit: &Commit,
         hash: &mut Hasher,
     ) -> Result<(), Error> {
         self.checksum_object(repo, commit.as_object(), hash)?;
         let tree = commit.tree()?;
-        self.checksum_tree(repo, tree, hash)?;
+        self.checksum_tree(repo, &tree, hash)?;
         Ok(())
     }
 
     pub fn compute(&self, specified_oid: Oid) -> Result<DigestBytes, Error> {
         let mut hash = Hasher::new(openssl::hash::MessageDigest::sha512()).unwrap();
         let commit = self.repo.find_commit(specified_oid)?;
-        self.checksum_commit_contents(&self.repo, commit, &mut hash)?;
+        self.checksum_commit_contents(&self.repo, &commit, &mut hash)?;
         Ok(hash.finish2().unwrap())
     }
 }
