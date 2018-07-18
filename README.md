@@ -62,7 +62,7 @@ change the file format output by `git archive` in the future.  Also,
 there are a variety of reasons why compressors like `gzip` and `xz`
 aren't necessarily reproducible, such as compression levels, included
 timestamps, optimizations in the algorithm, etc.  See
-[Pristine tar](http://git.kitenet.net/?p=zzattic/pristine-tar.git;a=summary)
+[Pristine tar](https://salsa.debian.org/debian/pristine-tar)
 for some examples of the difficulties involved (e.g. trying to
 retroactively guess the compression level arguments from the xz
 dictionary size).
