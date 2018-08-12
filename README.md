@@ -18,7 +18,7 @@ on the git mailing list:
 
 See also the [the Node.js implementation](https://github.com/indutny/git-secure-tag).
 
- - [Fedora package](https://admin.fedoraproject.org/pkgdb/package/rpms/git-evtag/)
+ - [Fedora package](https://src.fedoraproject.org/rpms/git-evtag)
  - Building from source: Requires glib2 and libgit2.
 
 ### Using git-evtag
