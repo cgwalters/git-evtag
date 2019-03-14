@@ -76,7 +76,7 @@ def checksum_object(repo, objid):
         raise subprocess.CalledProcessError(p.returncode, 'git cat-file')
     return treeobjid
 
-def checksum_tree(repo, objid):
+def checksum_tree(repo, path, objid):
     checksum_object(repo, objid)
     p = subprocess.Popen(['git', 'ls-tree', objid],
                          stdin=DEVNULL,
@@ -89,9 +89,9 @@ def checksum_tree(repo, objid):
         if otype == 'blob':
             checksum_object(repo, subid)
         elif otype == 'tree':
-            checksum_tree(repo, subid)
+            checksum_tree(repo, os.path.join(path, fname), subid)
         elif otype == 'commit':
-            checksum_repo(os.path.join(repo, fname), subid)
+            checksum_repo(os.path.join(repo, path, fname), subid)
         else:
             assert False
     p.wait()
@@ -100,7 +100,7 @@ def checksum_tree(repo, objid):
 
 def checksum_repo(repo, objid):
     treeid = checksum_object(repo, objid)
-    checksum_tree(repo, treeid)
+    checksum_tree(repo, '.', treeid)
 
 checksum_repo('.', opts.rev)
 
