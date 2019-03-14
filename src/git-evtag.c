@@ -258,7 +258,10 @@ checksum_tree_callback (const char *root,
     case GIT_OBJ_COMMIT:
       {
         git_submodule *submod = NULL;
-        tmp_r = git_submodule_lookup (&submod, twdata->repo, git_tree_entry_name (entry));
+        char *submodule_path = g_build_filename (root, git_tree_entry_name (entry), NULL);
+        tmp_r = git_submodule_lookup (&submod, twdata->repo, submodule_path);
+        g_free (submodule_path);
+
         if (!handle_libgit_ret (tmp_r, twdata->error))
           goto out;
 
