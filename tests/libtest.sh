@@ -143,8 +143,21 @@ setup_test_repository () {
     gitcommit_inctime -a -m 'Add libsub'
     git push
 
+    # Copy coolproject to create another version which has two submodules,
+    # one which is nested deeper in the repository.
+    cd ${test_tmpdir}
+    cp -r repos/coolproject repos/coolproject2
+    git clone file://${test_tmpdir}/repos/coolproject2
+    cd coolproject2
+    mkdir subprojects
+    git submodule add ../subproject subprojects/subproject
+    git add subprojects/subproject
+    gitcommit_inctime -a -m 'Add subprojects/subproject'
+    git push
+
     cd ${test_tmpdir}
     rm coolproject -rf
+    rm coolproject2 -rf
     rm subproject -rf
 
     cd $oldpwd
