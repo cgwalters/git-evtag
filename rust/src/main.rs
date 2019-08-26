@@ -8,9 +8,6 @@
 
 #[macro_use]
 extern crate clap;
-extern crate git2;
-extern crate hex;
-extern crate openssl;
 
 use std::error::Error as StdError;
 use std::io::Write;
