@@ -35,64 +35,72 @@ enum Opt {
     Verify(VerifyOpts),
 }
 
-fn checksum_object(repo: &Repository, object: &Object, hash: &mut Hasher) -> Result<()> {
-    let odb = repo.odb()?;
-    let object = odb.read(object.id())?;
-    let contentbuf = object.data();
-    let header = format!("{} {}", object.kind().str(), contentbuf.len());
-    hash.write_all(header.as_bytes())?;
-    let nulbyte: [u8; 1] = [0; 1];
-    hash.write_all(&nulbyte)?;
-    hash.write_all(contentbuf)?;
-    Ok(())
-}
+mod algorithm {
+    use super::*;
 
-fn checksum_submodule(submodule: &Submodule, hash: &mut Hasher) -> Result<()> {
-    let subrepo = submodule.open()?;
-    let sub_head = submodule.workdir_id().expect("Failed to find workdir id");
-    let commit = subrepo.find_commit(sub_head)?;
-    checksum_commit_contents(&subrepo, &commit, hash)?;
-    Ok(())
-}
-
-fn checksum_tree(repo: &Repository, tree: &Tree, hash: &mut Hasher) -> Result<()> {
-    checksum_object(repo, tree.as_object(), hash)?;
-    for entry in tree.iter() {
-        match entry
-            .kind()
-            .expect("I have no idea what a None entry would be...")
-        {
-            ObjectType::Blob => {
-                let object = repo.find_object(entry.id(), entry.kind())?;
-                checksum_object(repo, &object, hash)?
-            }
-            ObjectType::Tree => {
-                let tree = repo.find_tree(entry.id())?;
-                checksum_tree(repo, &tree, hash)?;
-            }
-            ObjectType::Commit => {
-                let submodule = repo.find_submodule(entry.name().expect("entry name"))?;
-                checksum_submodule(&submodule, hash)?;
-            }
-            ObjectType::Tag => {}
-            ObjectType::Any => panic!("Found an Any type?"),
-        }
+    fn checksum_object(repo: &Repository, object: &Object, hash: &mut Hasher) -> Result<()> {
+        let odb = repo.odb()?;
+        let object = odb.read(object.id())?;
+        let contentbuf = object.data();
+        let header = format!("{} {}", object.kind().str(), contentbuf.len());
+        hash.write_all(header.as_bytes())?;
+        let nulbyte: [u8; 1] = [0; 1];
+        hash.write_all(&nulbyte)?;
+        hash.write_all(contentbuf)?;
+        Ok(())
     }
-    Ok(())
-}
 
-fn checksum_commit_contents(repo: &Repository, commit: &Commit, hash: &mut Hasher) -> Result<()> {
-    checksum_object(repo, commit.as_object(), hash)?;
-    let tree = commit.tree()?;
-    checksum_tree(repo, &tree, hash)?;
-    Ok(())
-}
+    fn checksum_submodule(submodule: &Submodule, hash: &mut Hasher) -> Result<()> {
+        let subrepo = submodule.open()?;
+        let sub_head = submodule.workdir_id().expect("Failed to find workdir id");
+        let commit = subrepo.find_commit(sub_head)?;
+        checksum_commit_contents(&subrepo, &commit, hash)?;
+        Ok(())
+    }
 
-fn compute_evtag(repo: &Repository, specified_oid: Oid) -> Result<DigestBytes> {
-    let mut hash = Hasher::new(openssl::hash::MessageDigest::sha512())?;
-    let commit = repo.find_commit(specified_oid)?;
-    checksum_commit_contents(repo, &commit, &mut hash)?;
-    Ok(hash.finish()?)
+    fn checksum_tree(repo: &Repository, tree: &Tree, hash: &mut Hasher) -> Result<()> {
+        checksum_object(repo, tree.as_object(), hash)?;
+        for entry in tree.iter() {
+            match entry
+                .kind()
+                .expect("I have no idea what a None entry would be...")
+            {
+                ObjectType::Blob => {
+                    let object = repo.find_object(entry.id(), entry.kind())?;
+                    checksum_object(repo, &object, hash)?
+                }
+                ObjectType::Tree => {
+                    let tree = repo.find_tree(entry.id())?;
+                    checksum_tree(repo, &tree, hash)?;
+                }
+                ObjectType::Commit => {
+                    let submodule = repo.find_submodule(entry.name().expect("entry name"))?;
+                    checksum_submodule(&submodule, hash)?;
+                }
+                ObjectType::Tag => {}
+                ObjectType::Any => panic!("Found an Any type?"),
+            }
+        }
+        Ok(())
+    }
+
+    fn checksum_commit_contents(
+        repo: &Repository,
+        commit: &Commit,
+        hash: &mut Hasher,
+    ) -> Result<()> {
+        checksum_object(repo, commit.as_object(), hash)?;
+        let tree = commit.tree()?;
+        checksum_tree(repo, &tree, hash)?;
+        Ok(())
+    }
+
+    pub(crate) fn compute_evtag(repo: &Repository, specified_oid: Oid) -> Result<DigestBytes> {
+        let mut hash = Hasher::new(openssl::hash::MessageDigest::sha512())?;
+        let commit = repo.find_commit(specified_oid)?;
+        algorithm::checksum_commit_contents(repo, &commit, &mut hash)?;
+        Ok(hash.finish()?)
+    }
 }
 
 fn verify(args: &VerifyOpts) -> Result<()> {
@@ -120,7 +128,7 @@ fn verify(args: &VerifyOpts) -> Result<()> {
         }
     }
 
-    let expected_checksum = hex::encode(compute_evtag(&repo, specified_oid)?);
+    let expected_checksum = hex::encode(algorithm::compute_evtag(&repo, specified_oid)?);
 
     let message = match tag.message() {
         Some(message) => message,
