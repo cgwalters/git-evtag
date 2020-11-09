@@ -34,7 +34,12 @@ impl EvTag {
         })
     }
 
-    fn checksum_object(&self, repo: &Repository, object: &Object, hash: &mut Hasher) -> Result<(), Error> {
+    fn checksum_object(
+        &self,
+        repo: &Repository,
+        object: &Object,
+        hash: &mut Hasher,
+    ) -> Result<(), Error> {
         let odb = repo.odb()?;
         let object = odb.read(object.id())?;
         let contentbuf = object.data();
@@ -54,7 +59,12 @@ impl EvTag {
         Ok(())
     }
 
-    fn checksum_tree(&self, repo: &Repository, tree: &Tree, hash: &mut Hasher) -> Result<(), Error> {
+    fn checksum_tree(
+        &self,
+        repo: &Repository,
+        tree: &Tree,
+        hash: &mut Hasher,
+    ) -> Result<(), Error> {
         self.checksum_object(repo, tree.as_object(), hash)?;
         for entry in tree.iter() {
             match entry
@@ -116,10 +126,12 @@ fn run(args: &Args) -> Result<(), Error> {
             .arg(tag_oid_hexstr)
             .status()
         {
-            Ok(ref status) => if !status.success() {
-                let errmsg = format!("verify-tag exited with error {:?}", status);
-                return Err(Error::from_str(&errmsg));
-            },
+            Ok(ref status) => {
+                if !status.success() {
+                    let errmsg = format!("verify-tag exited with error {:?}", status);
+                    return Err(Error::from_str(&errmsg));
+                }
+            }
             Err(e) => return Err(Error::from_str(e.description())),
         }
     }
@@ -140,8 +152,7 @@ fn run(args: &Args) -> Result<(), Error> {
         if expected_checksum != found_checksum {
             let msg = format!(
                 "Expected checksum {} but found {}",
-                expected_checksum,
-                found_checksum
+                expected_checksum, found_checksum
             );
             return Err(Error::from_str(&msg));
         }
@@ -156,7 +167,8 @@ fn main() {
     let matches = clap_app!(git_evtag =>
         (@arg no_signature: -n --no-signature "Do not verify GPG signature")
         (@arg TAGNAME: +required "Tag name")
-    ).get_matches();
+    )
+    .get_matches();
 
     let args = Args {
         flag_no_signature: matches.is_present("no_signature"),
