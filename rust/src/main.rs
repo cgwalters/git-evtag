@@ -9,7 +9,7 @@
 #[macro_use]
 extern crate clap;
 
-use std::error::Error as StdError;
+use anyhow::Result;
 use std::io::Write;
 use std::process::Command;
 
@@ -28,7 +28,7 @@ pub struct EvTag {
 }
 
 impl EvTag {
-    pub fn new(path: &str) -> Result<EvTag, Error> {
+    pub fn new(path: &str) -> Result<EvTag> {
         Ok(EvTag {
             repo: Repository::discover(path)?,
         })
@@ -110,7 +110,7 @@ impl EvTag {
     }
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: &Args) -> Result<()> {
     let evtag = EvTag::new(".")?;
     let long_tagname = format!("refs/tags/{}", args.arg_tagname);
 
@@ -128,11 +128,10 @@ fn run(args: &Args) -> Result<(), Error> {
         {
             Ok(ref status) => {
                 if !status.success() {
-                    let errmsg = format!("verify-tag exited with error {:?}", status);
-                    return Err(Error::from_str(&errmsg));
+                    anyhow::bail!("verify-tag exited with error {:?}", status);
                 }
             }
-            Err(e) => return Err(Error::from_str(e.description())),
+            Err(e) => return Err(e.into()),
         }
     }
 
@@ -140,7 +139,7 @@ fn run(args: &Args) -> Result<(), Error> {
 
     let message = match tag.message() {
         Some(message) => message,
-        None => return Err(Error::from_str("No tag message found!")),
+        None => anyhow::bail!("No tag message found!"),
     };
 
     for line in message.lines() {
@@ -150,11 +149,11 @@ fn run(args: &Args) -> Result<(), Error> {
         let (_, suffix) = line.split_at(EVTAG_SHA512.len());
         let found_checksum = suffix.trim();
         if expected_checksum != found_checksum {
-            let msg = format!(
+            anyhow::bail!(
                 "Expected checksum {} but found {}",
-                expected_checksum, found_checksum
+                expected_checksum,
+                found_checksum
             );
-            return Err(Error::from_str(&msg));
         }
         println!("Successfully verified {}", line);
         break;

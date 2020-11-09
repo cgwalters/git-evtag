@@ -5,6 +5,7 @@ authors = ["Colin Walters <walters@verbum.org>"]
 edition = "2018"
 
 [dependencies]
+anyhow = "1.0.34"
 clap = "2"
 git2 = "0.13.12"
 hex = "0.4.2"
