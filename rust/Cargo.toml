@@ -7,6 +7,6 @@ edition = "2018"
 [dependencies]
 clap = "2"
 git2 = "0.13.12"
-hex = "0.3"
+hex = "0.4.2"
 openssl = "0.10"
 
