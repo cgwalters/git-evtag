@@ -12,7 +12,7 @@ use anyhow::Result;
 use std::io::Write;
 use std::process::Command;
 
-use git2::{Commit, Error, Object, ObjectType, Oid, Repository, Submodule, Tree};
+use git2::{Commit, Object, ObjectType, Oid, Repository, Submodule, Tree};
 use openssl::hash::{DigestBytes, Hasher};
 
 const EVTAG_SHA512: &str = "Git-EVTag-v0-SHA512:";
@@ -46,24 +46,19 @@ impl EvTag {
         })
     }
 
-    fn checksum_object(
-        &self,
-        repo: &Repository,
-        object: &Object,
-        hash: &mut Hasher,
-    ) -> Result<(), Error> {
+    fn checksum_object(&self, repo: &Repository, object: &Object, hash: &mut Hasher) -> Result<()> {
         let odb = repo.odb()?;
         let object = odb.read(object.id())?;
         let contentbuf = object.data();
         let header = format!("{} {}", object.kind().str(), contentbuf.len());
-        hash.write_all(header.as_bytes()).unwrap();
+        hash.write_all(header.as_bytes())?;
         let nulbyte: [u8; 1] = [0; 1];
-        hash.write_all(&nulbyte).unwrap();
-        hash.write_all(contentbuf).unwrap();
+        hash.write_all(&nulbyte)?;
+        hash.write_all(contentbuf)?;
         Ok(())
     }
 
-    fn checksum_submodule(&self, hash: &mut Hasher, submodule: &Submodule) -> Result<(), Error> {
+    fn checksum_submodule(&self, hash: &mut Hasher, submodule: &Submodule) -> Result<()> {
         let subrepo = submodule.open()?;
         let sub_head = submodule.workdir_id().expect("Failed to find workdir id");
         let commit = subrepo.find_commit(sub_head)?;
@@ -71,12 +66,7 @@ impl EvTag {
         Ok(())
     }
 
-    fn checksum_tree(
-        &self,
-        repo: &Repository,
-        tree: &Tree,
-        hash: &mut Hasher,
-    ) -> Result<(), Error> {
+    fn checksum_tree(&self, repo: &Repository, tree: &Tree, hash: &mut Hasher) -> Result<()> {
         self.checksum_object(repo, tree.as_object(), hash)?;
         for entry in tree.iter() {
             match entry
@@ -92,7 +82,7 @@ impl EvTag {
                     self.checksum_tree(repo, &tree, hash)?;
                 }
                 ObjectType::Commit => {
-                    let submodule = repo.find_submodule(entry.name().unwrap())?;
+                    let submodule = repo.find_submodule(entry.name().expect("entry name"))?;
                     self.checksum_submodule(hash, &submodule)?;
                 }
                 ObjectType::Tag => {}
@@ -107,18 +97,18 @@ impl EvTag {
         repo: &Repository,
         commit: &Commit,
         hash: &mut Hasher,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         self.checksum_object(repo, commit.as_object(), hash)?;
         let tree = commit.tree()?;
         self.checksum_tree(repo, &tree, hash)?;
         Ok(())
     }
 
-    pub fn compute(&self, specified_oid: Oid) -> Result<DigestBytes, Error> {
-        let mut hash = Hasher::new(openssl::hash::MessageDigest::sha512()).unwrap();
+    pub fn compute(&self, specified_oid: Oid) -> Result<DigestBytes> {
+        let mut hash = Hasher::new(openssl::hash::MessageDigest::sha512())?;
         let commit = self.repo.find_commit(specified_oid)?;
         self.checksum_commit_contents(&self.repo, &commit, &mut hash)?;
-        Ok(hash.finish().unwrap())
+        Ok(hash.finish()?)
     }
 }
 
