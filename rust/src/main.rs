@@ -8,7 +8,7 @@
 
 use structopt::StructOpt;
 
-use anyhow::Result;
+use anyhow::{anyhow, bail, Result};
 use std::io::Write;
 use std::process::Command;
 
@@ -114,28 +114,22 @@ fn verify(args: &VerifyOpts) -> Result<()> {
     let tag_oid_hexstr = format!("{}", tag.id());
 
     if !args.no_signature {
-        match Command::new("git")
+        let status = Command::new("git")
             .arg("verify-tag")
             .arg(tag_oid_hexstr)
-            .status()
-        {
-            Ok(ref status) => {
-                if !status.success() {
-                    anyhow::bail!("verify-tag exited with error {:?}", status);
-                }
-            }
-            Err(e) => return Err(e.into()),
+            .status()?;
+        if !status.success() {
+            bail!("verify-tag exited with error {:?}", status);
         }
     }
 
-    let message = match tag.message() {
-        Some(message) => message,
-        None => anyhow::bail!("No tag message found!"),
-    };
+    let message = tag
+        .message()
+        .ok_or_else(|| anyhow!("No tag message found"))?;
     let found_checksum = message
         .lines()
         .find_map(|l| l.strip_prefix(EVTAG_SHA512).map(|s| s.trim().to_string()))
-        .ok_or_else(|| anyhow::anyhow!("No {} found in tag message", EVTAG_SHA512))?;
+        .ok_or_else(|| anyhow!("No {} found in tag message", EVTAG_SHA512))?;
 
     let expected_checksum = hex::encode(algorithm::compute_evtag(&repo, specified_oid)?);
 
