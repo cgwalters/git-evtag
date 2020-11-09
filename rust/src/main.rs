@@ -6,8 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use]
-extern crate clap;
+use structopt::StructOpt;
 
 use anyhow::Result;
 use std::io::Write;
@@ -17,10 +16,23 @@ use git2::{Commit, Error, Object, ObjectType, Oid, Repository, Submodule, Tree};
 use openssl::hash::{DigestBytes, Hasher};
 
 const EVTAG_SHA512: &str = "Git-EVTag-v0-SHA512:";
+#[derive(Debug, StructOpt)]
+#[structopt(rename_all = "kebab-case")]
+struct VerifyOpts {
+    /// Git tag name
+    tagname: String,
 
-struct Args<'a> {
-    arg_tagname: &'a str,
-    flag_no_signature: bool,
+    /// Don't verify the GPG signature
+    no_signature: bool,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = "git-evtag", about = "Extended Git tag verification")]
+#[structopt(rename_all = "kebab-case")]
+/// Main options struct
+enum Opt {
+    /// Verify a signature
+    Verify(VerifyOpts),
 }
 
 pub struct EvTag {
@@ -110,9 +122,9 @@ impl EvTag {
     }
 }
 
-fn run(args: &Args) -> Result<()> {
+fn verify(args: &VerifyOpts) -> Result<()> {
     let evtag = EvTag::new(".")?;
-    let long_tagname = format!("refs/tags/{}", args.arg_tagname);
+    let long_tagname = format!("refs/tags/{}", args.tagname);
 
     let oid = evtag.repo.refname_to_id(&long_tagname)?;
     let tag = evtag.repo.find_tag(oid)?;
@@ -120,7 +132,7 @@ fn run(args: &Args) -> Result<()> {
     let specified_oid = obj.id();
     let tag_oid_hexstr = format!("{}", tag.id());
 
-    if !args.flag_no_signature {
+    if !args.no_signature {
         match Command::new("git")
             .arg("verify-tag")
             .arg(tag_oid_hexstr)
@@ -162,20 +174,8 @@ fn run(args: &Args) -> Result<()> {
     Ok(())
 }
 
-fn main() {
-    let matches = clap_app!(git_evtag =>
-        (@arg no_signature: -n --no-signature "Do not verify GPG signature")
-        (@arg TAGNAME: +required "Tag name")
-    )
-    .get_matches();
-
-    let args = Args {
-        flag_no_signature: matches.is_present("no_signature"),
-        arg_tagname: matches.value_of("TAGNAME").unwrap(),
-    };
-
-    match run(&args) {
-        Ok(()) => {}
-        Err(e) => println!("error: {}", e),
+fn main() -> Result<()> {
+    match Opt::from_args() {
+        Opt::Verify(ref opts) => verify(opts),
     }
 }
