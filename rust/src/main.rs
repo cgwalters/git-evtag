@@ -128,29 +128,28 @@ fn verify(args: &VerifyOpts) -> Result<()> {
         }
     }
 
-    let expected_checksum = hex::encode(algorithm::compute_evtag(&repo, specified_oid)?);
-
     let message = match tag.message() {
         Some(message) => message,
         None => anyhow::bail!("No tag message found!"),
     };
+    let found_checksum = message
+        .lines()
+        .find_map(|l| l.strip_prefix(EVTAG_SHA512).map(|s| s.trim().to_string()))
+        .ok_or_else(|| anyhow::anyhow!("No {} found in tag message", EVTAG_SHA512))?;
 
-    for line in message.lines() {
-        if !line.starts_with(EVTAG_SHA512) {
-            continue;
-        }
-        let (_, suffix) = line.split_at(EVTAG_SHA512.len());
-        let found_checksum = suffix.trim();
-        if expected_checksum != found_checksum {
-            anyhow::bail!(
-                "Expected checksum {} but found {}",
-                expected_checksum,
-                found_checksum
-            );
-        }
-        println!("Successfully verified {}", line);
-        break;
+    let expected_checksum = hex::encode(algorithm::compute_evtag(&repo, specified_oid)?);
+
+    if expected_checksum != found_checksum {
+        anyhow::bail!(
+            "Expected checksum {} but found {}",
+            expected_checksum,
+            found_checksum
+        );
     }
+    println!(
+        "Successfully verified {}: {}",
+        EVTAG_SHA512, expected_checksum
+    );
 
     Ok(())
 }
