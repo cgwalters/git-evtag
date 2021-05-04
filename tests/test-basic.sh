@@ -119,7 +119,7 @@ cd coolproject2
 trusted_git_submodule update --init
 with_editor_script git evtag sign -u 472CDAFA v2015.1
 git show refs/tags/v2015.1 > tag.txt
-TAG='Git-EVTag-v0-SHA512: d683c087ffee370996b9514f892ec8911451b33e3dfe48ac233a3dca1d63676802236e2d152803f553aa7d05c00f6e30b83f1f73dae9d524378845be02da4b97'
+TAG='Git-EVTag-v0-SHA512: 8ef922041663821b8208d6e1037adbd51e0b19cc4dd3314436b3078bdae4073a616e6e289891fa5ad9f798630962a33350f6035fffec6ca3c499bc01f07c3d0a'
 assert_file_has_content tag.txt "${TAG}"
 with_editor_script git evtag verify v2015.1 | tee verify.out
 assert_file_has_content verify.out "Successfully verified: ${TAG}"
