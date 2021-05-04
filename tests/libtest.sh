@@ -24,6 +24,11 @@ export TEST_GPG_KEYID_1="472CDAFA"
 export TEST_GPG_KEYID_2="CA950D41"
 export TEST_GPG_KEYID_3="DF444D67"
 
+export GIT_AUTHOR_NAME='Colin Walters'
+export GIT_AUTHOR_EMAIL='walters@verbum.org'
+export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
+export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+
 # GPG when creating signatures demands a writable
 # homedir in order to create lockfiles.  Work around
 # this by copying locally.
