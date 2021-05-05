@@ -15,6 +15,18 @@
 # You should have received a copy of the GNU Lesser General
 # Public License along with this library; if not, see <http://www.gnu.org/licenses/>.
 
+AM_TESTS_ENVIRONMENT = \
+	PATH="$(abs_top_builddir):$${PATH}" \
+	G_TEST_SRCDIR="$(abs_srcdir)" \
+	G_TEST_BUILDDIR="$(abs_builddir)" \
+	$(NULL)
+LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) $(top_srcdir)/build-aux/tap-driver.sh
+LOG_COMPILER = $(srcdir)/tests/tap-test
+
+TESTS = \
+	tests/test-basic.sh \
+	$(NULL)
+
 if BUILDOPT_INSTALL_TESTS
 
 insttestdir=$(pkglibexecdir)/installed-tests
