@@ -146,7 +146,7 @@ setup_test_repository () {
     git add subproject
     echo '#include subproject/src/libsub.c' >> src/cool.c
     gitcommit_inctime -a -m 'Add libsub'
-    git push
+    git push origin master
 
     cd ${test_tmpdir}
     rm coolproject -rf
