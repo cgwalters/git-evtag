@@ -29,10 +29,8 @@ GITIGNOREFILES += build-aux/ m4/ gtk-doc.make config.h.in aclocal.m4
 
 include $(INTROSPECTION_MAKEFILE)
 
-girdir = $(pkgdatadir)/gir-1.0
-gir_DATA = $(INTROSPECTION_GIRS)
-typelibdir = $(pkglibdir)/girepository-1.0
-typelib_DATA = $(gir_DATA:.gir=.typelib)
+gir_DATA += $(INTROSPECTION_GIRS)
+typelib_DATA += $(gir_DATA:.gir=.typelib)
 
 include src/Makefile-git-evtag.am
 include man/Makefile-man.am
