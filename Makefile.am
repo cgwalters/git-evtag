@@ -27,11 +27,6 @@ AM_CFLAGS += $(WARN_CFLAGS)
 
 GITIGNOREFILES += build-aux/ m4/ gtk-doc.make config.h.in aclocal.m4
 
-include $(INTROSPECTION_MAKEFILE)
-
-gir_DATA += $(INTROSPECTION_GIRS)
-typelib_DATA += $(gir_DATA:.gir=.typelib)
-
 include src/Makefile-git-evtag.am
 include man/Makefile-man.am
 include rust/Makefile-inc.am
