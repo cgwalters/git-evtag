@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # An implementation of Git-EVTag in a mixture of Python and
 # git-as-subprocess.  Slower than C, but easier to understand
@@ -41,17 +41,18 @@ def checksum_bytes(otype, buf):
     return blen
 
 def checksum_object(repo, objid):
+    assert objid is not None
     p = subprocess.Popen(['git', 'cat-file', '--batch'],
                          stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE,
                          close_fds=True,
                          cwd=repo)
-    p.stdin.write(objid + '\n')
+    p.stdin.write(objid.encode('ascii') + b'\n')
     p.stdin.close()
-    (objid,objtype,lenstr) = p.stdout.readline().split(None, 2)
+    (objid,objtype,lenstr) = p.stdout.readline().decode('ascii').split(None, 2)
     olen = int(lenstr)
     lenstr = lenstr.strip()
-    buf = "{0} {1}\000".format(objtype, lenstr)
+    buf = "{0} {1}\000".format(objtype, lenstr).encode('ascii')
     checksum_bytes(objtype, buf)
 
     stats[objtype] += 1
@@ -59,7 +60,7 @@ def checksum_object(repo, objid):
     if objtype == 'commit':
         buf = p.stdout.readline()
         olen -= checksum_bytes(objtype, buf)
-        (treestr, treeobjid) = buf.split(None, 1)
+        (treestr, treeobjid) = buf.decode('ascii').split(None, 1)
         treeobjid = treeobjid.strip()
         assert treestr == 'tree'
     else:
@@ -84,7 +85,7 @@ def checksum_tree(repo, path, objid):
                          close_fds=True,
                          cwd=repo)
     for line in p.stdout:
-        (mode, otype, subid, fname) = line.split(None, 3)
+        (mode, otype, subid, fname) = line.decode('ascii').split(None, 3)
         fname = fname.strip()
         if otype == 'blob':
             checksum_object(repo, subid)
