@@ -19,7 +19,7 @@ set -e
 set -x
 set -o pipefail
 
-echo "1..1"
+echo "1..6"
 
 . $(dirname $0)/libtest.sh
 
