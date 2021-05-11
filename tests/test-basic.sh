@@ -19,7 +19,7 @@ set -e
 set -x
 set -o pipefail
 
-echo "1..1"
+echo "1..7"
 
 . $(dirname $0)/libtest.sh
 
@@ -111,3 +111,24 @@ git evtag verify --no-signature v2015.1
 rm -f tag.txt
 rm -f verify.out
 echo "ok checksum-only tag + verify"
+
+cd ${test_tmpdir}
+rm coolproject -rf
+git clone repos/coolproject2
+cd coolproject2
+git submodule update --init
+with_editor_script git evtag sign -u 472CDAFA v2015.1
+git show refs/tags/v2015.1 > tag.txt
+TAG='Git-EVTag-v0-SHA512: d683c087ffee370996b9514f892ec8911451b33e3dfe48ac233a3dca1d63676802236e2d152803f553aa7d05c00f6e30b83f1f73dae9d524378845be02da4b97'
+assert_file_has_content tag.txt "${TAG}"
+with_editor_script git evtag verify v2015.1 | tee verify.out
+assert_file_has_content verify.out "Successfully verified: ${TAG}"
+# Also test subdirectory
+(cd src && with_editor_script git evtag verify v2015.1 | tee ../verify2.out)
+assert_file_has_content verify2.out "Successfully verified: ${TAG}"
+${SRCDIR}/git-evtag-compute-py HEAD > tag-py.txt
+assert_file_has_content tag-py.txt "${TAG}"
+
+rm -f tag.txt
+rm -f verify.out
+echo "ok tag + verify with nested submodules"
