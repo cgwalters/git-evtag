@@ -100,7 +100,7 @@ setup_test_repository () {
     cd ${test_tmpdir}
     mkdir coolproject
     cd coolproject
-    git init
+    git init -b mybranch
     gitcommit_reset_time
     echo 'So cool!' > README.md
     git add .
@@ -112,15 +112,15 @@ setup_test_repository () {
 
     cd ${test_tmpdir}
     mkdir -p repos/coolproject
-    cd repos/coolproject && git init --bare
+    cd repos/coolproject && git init --bare -b mybranch
     cd ${test_tmpdir}/coolproject
     git remote add origin file://${test_tmpdir}/repos/coolproject
-    git push --set-upstream origin master
+    git push --set-upstream origin mybranch
 
     cd ${test_tmpdir}
     mkdir subproject
     cd subproject
-    git init
+    git init -b mybranch
     echo 'this is libsub.c' > libsub.c
     echo 'An example submodule' > README.md
     git add .
@@ -131,10 +131,10 @@ setup_test_repository () {
     gitcommit_inctime -a -m 'an update'
     cd ${test_tmpdir}
     mkdir -p repos/subproject
-    cd repos/subproject && git init --bare
+    cd repos/subproject && git init --bare -b mybranch
     cd ${test_tmpdir}/subproject
     git remote add origin file://${test_tmpdir}/repos/subproject
-    git push --set-upstream origin master
+    git push --set-upstream origin mybranch
 
     cd ${test_tmpdir}/coolproject
     git submodule add ../subproject subproject 
