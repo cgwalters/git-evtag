@@ -141,7 +141,7 @@ setup_test_repository () {
     git add subproject
     echo '#include subproject/src/libsub.c' >> src/cool.c
     gitcommit_inctime -a -m 'Add libsub'
-    git push
+    git push origin mybranch
 
     # Copy coolproject to create another version which has two submodules,
     # one which is nested deeper in the repository.
@@ -153,7 +153,7 @@ setup_test_repository () {
     git submodule add ../subproject subprojects/subproject
     git add subprojects/subproject
     gitcommit_inctime -a -m 'Add subprojects/subproject'
-    git push
+    git push origin mybranch
 
     cd ${test_tmpdir}
     rm coolproject -rf
