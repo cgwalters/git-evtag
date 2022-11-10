@@ -94,6 +94,15 @@ gitcommit_inctime() {
     env GIT_AUTHOR_DATE="$TSV" GIT_COMMITTER_DATE="$TSV" git commit "$@"
 }
 
+trusted_git_submodule () {
+    # Git forbids file:/// for submodules by default, to avoid untrusted
+    # file:/// repositories being able to break a security boundary
+    # (CVE-2022-39253).
+    # In this test suite, all the repositories are under our control and
+    # we trust them, so bypass that.
+    git -c protocol.file.allow=always submodule "$@"
+}
+
 setup_test_repository () {
     oldpwd=`pwd`
 
@@ -137,7 +146,7 @@ setup_test_repository () {
     git push --set-upstream origin mybranch
 
     cd ${test_tmpdir}/coolproject
-    git submodule add ../subproject subproject 
+    trusted_git_submodule add ../subproject subproject
     git add subproject
     echo '#include subproject/src/libsub.c' >> src/cool.c
     gitcommit_inctime -a -m 'Add libsub'
@@ -150,7 +159,7 @@ setup_test_repository () {
     git clone file://${test_tmpdir}/repos/coolproject2
     cd coolproject2
     mkdir subprojects
-    git submodule add ../subproject subprojects/subproject
+    trusted_git_submodule add ../subproject subprojects/subproject
     git add subprojects/subproject
     gitcommit_inctime -a -m 'Add subprojects/subproject'
     git push origin mybranch
