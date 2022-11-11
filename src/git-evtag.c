@@ -23,6 +23,13 @@
 #include <string.h>
 #include <errno.h>
 
+#if !GLIB_CHECK_VERSION(2, 70, 0)
+/* The functionality of check_wait_status was available under a misleading
+ * name in older versions of GLib. The argument was always a wait-status,
+ * not an exit status. */
+#define g_spawn_check_wait_status(status, error) g_spawn_check_exit_status (status, error)
+#endif
+
 #define EVTAG_SHA512 "Git-EVTag-v0-SHA512:"
 #define LEGACY_EVTAG_ARCHIVE_TAR "ExtendedVerify-SHA256-archive-tar:"
 #define LEGACY_EVTAG_ARCHIVE_TAR_GITVERSION "ExtendedVerify-git-version:"
@@ -117,13 +124,13 @@ spawn_sync_require_success (char **argv,
                             GError **error)
 {
   gboolean ret = FALSE;
-  int estatus;
+  int wait_status;
 
   if (!g_spawn_sync (NULL, argv, NULL,
                      flags, NULL, NULL,
-                     NULL, NULL, &estatus, error))
+                     NULL, NULL, &wait_status, error))
     goto out;
-  if (!g_spawn_check_exit_status (estatus, error))
+  if (!g_spawn_check_wait_status (wait_status, error))
     goto out;
 
   ret = TRUE;
@@ -477,7 +484,7 @@ compute_and_append_legacy_archive_checksum (const char   *commit,
   gssize bytes_read;
   char readbuf[4096];
   char *gitversion = NULL;
-  int estatus;
+  int wait_status;
   char *nl;
 
   legacy_checksum_start = g_get_monotonic_time ();
@@ -504,9 +511,9 @@ compute_and_append_legacy_archive_checksum (const char   *commit,
   g_string_append (buf, g_checksum_get_string (legacy_archive_sha256));
   g_string_append_c (buf, '\n');
 
-  if (!g_spawn_command_line_sync ("git --version", &gitversion, NULL, &estatus, error))
+  if (!g_spawn_command_line_sync ("git --version", &gitversion, NULL, &wait_status, error))
     goto out;
-  if (!g_spawn_check_exit_status (estatus, error))
+  if (!g_spawn_check_wait_status (wait_status, error))
     goto out;
           
   nl = strchr (gitversion, '\n');
