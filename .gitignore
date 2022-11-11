@@ -1,0 +1,25 @@
+# Copyright 2022 Collabora Ltd.
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
+*.o
+*~
+.deps/
+/*.test
+/aclocal.m4
+/autom4te.cache/
+/build-aux/
+/config.h
+/config.h.in
+/config.log
+/config.status
+/configure
+/git-evtag
+/git-evtag-*.tar.*
+/git-evtag-*/
+/libtool
+/m4/libtool.m4
+/m4/lt*.m4
+/man/*.1
+/stamp-h1
+Makefile
+Makefile.in
