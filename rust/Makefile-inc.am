@@ -1,6 +1,12 @@
 if ENABLE_RUST
 bin_PROGRAMS += git-rustevtag
+git_rustevtag_SOURCES = \
+	rust/Cargo.toml \
+	rust/src/main.rs \
+	$(NULL)
 
-git-rustevtag: rust/src/main.rs rust/Cargo.toml
+git-rustevtag: $(git_rustevtag_SOURCES)
 	(cd rust && cargo build) && cp rust/target/debug/git-rustevtag .
 endif
+
+EXTRA_DIST += rust/rustfmt.toml
