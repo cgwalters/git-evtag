@@ -33,6 +33,7 @@ export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
 # homedir in order to create lockfiles.  Work around
 # this by copying locally.
 cp -a ${SRCDIR}/gpghome ${test_tmpdir}
+chmod -R u+w ${test_tmpdir}/gpghome
 chmod 0700 ${test_tmpdir}/gpghome
 export GNUPGHOME=${test_tmpdir}/gpghome
 
