@@ -29,6 +29,7 @@ test_scripts = \
 	$(NULL)
 TESTS = $(test_scripts)
 
+EXTRA_DIST += tests/git-evtag-compute-py
 
 if BUILDOPT_INSTALL_TESTS
 
@@ -43,7 +44,6 @@ dist_insttest_DATA = \
 	$(NULL)
 
 dist_insttest_SCRIPTS += src/git-evtag-compute-py
-EXTRA_DIST += tests/git-evtag-compute-py
 
 gpginsttestdir = $(pkglibexecdir)/installed-tests/gpghome
 dist_gpginsttest_DATA = tests/gpghome/secring.gpg \
