@@ -24,3 +24,5 @@ git_evtag_CFLAGS = $(AM_CFLAGS) $(BUILDDEP_LIBGIT_GLIB_CFLAGS)  -I$(srcdir)/src
 git_evtag_LDADD = $(BUILDDEP_LIBGIT_GLIB_LIBS)
 
 GITIGNOREFILES += src/.dirstamp
+
+EXTRA_DIST += src/meson.build

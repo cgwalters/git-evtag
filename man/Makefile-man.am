@@ -45,3 +45,4 @@ CLEANFILES += \
 endif
 
 EXTRA_DIST += man/git-evtag.xml
+EXTRA_DIST += man/meson.build

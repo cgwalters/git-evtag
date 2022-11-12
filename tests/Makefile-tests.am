@@ -22,7 +22,11 @@ AM_TESTS_ENVIRONMENT = \
 	$(NULL)
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) $(top_srcdir)/build-aux/tap-driver.sh
 LOG_COMPILER = $(srcdir)/tests/tap-test
+EXTRA_DIST += tests/gpghome/meson.build
+EXTRA_DIST += tests/gpghome/trusted/meson.build
+EXTRA_DIST += tests/meson.build
 EXTRA_DIST += tests/tap-test
+EXTRA_DIST += tests/tap.test.in
 
 test_scripts = \
 	tests/test-basic.sh \

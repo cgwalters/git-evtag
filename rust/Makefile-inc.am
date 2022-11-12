@@ -9,4 +9,5 @@ git-rustevtag: $(git_rustevtag_SOURCES)
 	(cd rust && cargo build) && cp rust/target/debug/git-evtag "$@"
 endif
 
+EXTRA_DIST += rust/meson.build
 EXTRA_DIST += rust/rustfmt.toml
