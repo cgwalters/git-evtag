@@ -24,19 +24,19 @@ LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) $(top_srcdir)/build-aux/tap-driver
 LOG_COMPILER = $(srcdir)/tests/tap-test
 EXTRA_DIST += tests/tap-test
 
-TESTS = \
+test_scripts = \
 	tests/test-basic.sh \
 	$(NULL)
+TESTS = $(test_scripts)
+
 
 if BUILDOPT_INSTALL_TESTS
 
 insttestdir=$(pkglibexecdir)/installed-tests
-testfiles = test-basic \
-	$(NULL)
-dist_insttest_SCRIPTS = $(addprefix tests/,$(testfiles:=.sh))
+dist_insttest_SCRIPTS = $(test_scripts)
 
 testmetadir = $(datadir)/installed-tests/$(PACKAGE)
-testmeta_DATA = $(testfiles:=.test)
+testmeta_DATA = $(test_scripts:.sh=.test)
 
 dist_insttest_DATA = \
 	tests/libtest.sh \
@@ -58,7 +58,8 @@ install-gpg-data-hook:
 	ln -sf trusted/pubring.gpg $(DESTDIR)$(gpginsttestdir)/pubring.gpg 
 INSTALL_DATA_HOOKS += install-gpg-data-hook
 
-%.test: tests/%.sh Makefile
+tests/%.test: tests/%.sh Makefile
+	@$(MKDIR_P) tests
 	$(AM_V_GEN) (echo '[Test]' > $@.tmp; \
 	 echo 'Exec=$(pkglibexecdir)/installed-tests/$(notdir $<)' >> $@.tmp; \
 	 echo 'Type=session' >> $@.tmp; \
@@ -66,3 +67,5 @@ INSTALL_DATA_HOOKS += install-gpg-data-hook
 	 mv $@.tmp $@)
 
 endif
+
+CLEANFILES += $(testmeta_DATA)
