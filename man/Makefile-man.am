@@ -43,3 +43,5 @@ CLEANFILES += \
 	$(NULL)
 
 endif
+
+EXTRA_DIST += man/git-evtag.xml
