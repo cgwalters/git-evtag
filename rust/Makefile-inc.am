@@ -6,7 +6,7 @@ git_rustevtag_SOURCES = \
 	$(NULL)
 
 git-rustevtag: $(git_rustevtag_SOURCES)
-	(cd rust && cargo build) && cp rust/target/debug/git-rustevtag .
+	(cd rust && cargo build) && cp rust/target/debug/git-evtag "$@"
 endif
 
 EXTRA_DIST += rust/rustfmt.toml
