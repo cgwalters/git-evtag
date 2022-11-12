@@ -115,60 +115,60 @@ setup_test_repository () {
     cd ${test_tmpdir}
     mkdir coolproject
     cd coolproject
-    git init -b mybranch
-    gitcommit_reset_time
+    git init -b mybranch >&2
+    gitcommit_reset_time >&2
     echo 'So cool!' > README.md
-    git add .
-    gitcommit_inctime -a -m 'Initial commit'
+    git add . >&2
+    gitcommit_inctime -a -m 'Initial commit' >&2
     mkdir src
     echo 'printf("hello world")' > src/cool.c
-    git add .
-    gitcommit_inctime -a -m 'Add C source'
+    git add . >&2
+    gitcommit_inctime -a -m 'Add C source' >&2
 
     cd ${test_tmpdir}
     mkdir -p repos/coolproject
-    cd repos/coolproject && git init --bare -b mybranch
+    cd repos/coolproject && git init --bare -b mybranch >&2
     cd ${test_tmpdir}/coolproject
-    git remote add origin file://${test_tmpdir}/repos/coolproject
-    git push --set-upstream origin mybranch
+    git remote add origin file://${test_tmpdir}/repos/coolproject >&2
+    git push --set-upstream origin mybranch >&2
 
     cd ${test_tmpdir}
     mkdir subproject
     cd subproject
-    git init -b mybranch
+    git init -b mybranch >&2
     echo 'this is libsub.c' > libsub.c
     echo 'An example submodule' > README.md
-    git add .
-    gitcommit_inctime -a -m 'init'
+    git add . >&2
+    gitcommit_inctime -a -m 'init' >&2
     mkdir src
     mv libsub.c src
     echo 'an update to libsub.c, now in src/' > src/libsub.c
-    gitcommit_inctime -a -m 'an update'
+    gitcommit_inctime -a -m 'an update' >&2
     cd ${test_tmpdir}
     mkdir -p repos/subproject
-    cd repos/subproject && git init --bare -b mybranch
+    cd repos/subproject && git init --bare -b mybranch >&2
     cd ${test_tmpdir}/subproject
-    git remote add origin file://${test_tmpdir}/repos/subproject
-    git push --set-upstream origin mybranch
+    git remote add origin file://${test_tmpdir}/repos/subproject >&2
+    git push --set-upstream origin mybranch >&2
 
     cd ${test_tmpdir}/coolproject
-    trusted_git_submodule add ../subproject subproject
-    git add subproject
+    trusted_git_submodule add ../subproject subproject >&2
+    git add subproject >&2
     echo '#include subproject/src/libsub.c' >> src/cool.c
-    gitcommit_inctime -a -m 'Add libsub'
-    git push origin mybranch
+    gitcommit_inctime -a -m 'Add libsub' >&2
+    git push origin mybranch >&2
 
     # Copy coolproject to create another version which has two submodules,
     # one which is nested deeper in the repository.
     cd ${test_tmpdir}
     cp -r repos/coolproject repos/coolproject2
-    git clone file://${test_tmpdir}/repos/coolproject2
+    git clone file://${test_tmpdir}/repos/coolproject2 >&2
     cd coolproject2
     mkdir subprojects
-    trusted_git_submodule add ../subproject subprojects/subproject
-    git add subprojects/subproject
-    gitcommit_inctime -a -m 'Add subprojects/subproject'
-    git push origin mybranch
+    trusted_git_submodule add ../subproject subprojects/subproject >&2
+    git add subprojects/subproject >&2
+    gitcommit_inctime -a -m 'Add subprojects/subproject' >&2
+    git push origin mybranch >&2
 
     cd ${test_tmpdir}
     rm coolproject -rf
