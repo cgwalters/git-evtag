@@ -42,3 +42,8 @@ include rust/Makefile-inc.am
 include tests/Makefile-tests.am
 
 -include $(top_srcdir)/git.mk
+
+$(srcdir)/.gitignore: src/Makefile-git-evtag.am
+$(srcdir)/.gitignore: man/Makefile-man.am
+$(srcdir)/.gitignore: rust/Makefile-inc.am
+$(srcdir)/.gitignore: tests/Makefile-tests.am
