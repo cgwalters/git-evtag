@@ -25,7 +25,6 @@ AM_CPPFLAGS += -DDATADIR='"$(datadir)"' \
 	-DLOCALEDIR=\"$(datadir)/locale\"
 AM_CFLAGS += $(WARN_CFLAGS)
 
-GITIGNOREFILES += *.test
 GITIGNOREFILES += build-aux/ m4/ gtk-doc.make config.h.in aclocal.m4
 GITIGNOREFILES += git-evtag-*.tar.*
 
