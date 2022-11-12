@@ -1,0 +1,7 @@
+# Copyright 2022 Simon McVittie
+# SPDX-License-Identifier: MIT
+
+[Test]
+Type=session
+Exec=@insttestdir@/@basename@
+Output=TAP

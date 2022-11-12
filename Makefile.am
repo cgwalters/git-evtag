@@ -25,6 +25,10 @@ AM_CPPFLAGS += -DDATADIR='"$(datadir)"' \
 	-DLOCALEDIR=\"$(datadir)/locale\"
 AM_CFLAGS += $(WARN_CFLAGS)
 
+EXTRA_DIST += meson.build
+EXTRA_DIST += meson_options.txt
+EXTRA_DIST += packaging/meson-compat-install-symlink.sh
+
 GITIGNOREFILES += build-aux/ m4/ gtk-doc.make config.h.in aclocal.m4
 GITIGNOREFILES += git-evtag-*.tar.*
 
@@ -39,3 +43,13 @@ $(srcdir)/.gitignore: src/Makefile-git-evtag.am
 $(srcdir)/.gitignore: man/Makefile-man.am
 $(srcdir)/.gitignore: rust/Makefile-inc.am
 $(srcdir)/.gitignore: tests/Makefile-tests.am
+
+distcheck-hook: distcheck-hook-meson
+distcheck-hook-meson:
+	set -e; if command -v meson > /dev/null; then \
+		cd $(distdir); \
+		meson setup _build/meson; \
+		meson compile -C _build/meson -v; \
+		meson test -C _build/meson -v; \
+		rm -fr _build/meson; \
+	fi

@@ -1,0 +1,22 @@
+# Copyright 2022 Simon McVittie
+# SPDX-License-Identifier: MIT
+
+option(
+  'install_tests',
+  type : 'boolean',
+  description : 'Install test programs',
+  value : false,
+)
+option(
+  'man',
+  type : 'feature',
+  description : 'Generate man pages',
+  value : 'auto',
+)
+# "Option name rust is reserved"
+option(
+  'build_rust_version',
+  type : 'feature',
+  description : 'Compile Rust version',
+  value : 'disabled',
+)
