@@ -8,6 +8,9 @@ PACKAGE=git-evtag
 
 PKG_VER = $(PACKAGE)-$(GITREV_FOR_PKG)
 
+# TODO: Use `meson dist`, which implements its own submodule-aware
+# `git archive` so we don't have to; or convert this whole file to be a
+# series of run targets <https://mesonbuild.com/Run-targets.html>
 dist-snapshot:
 	set -x; \
 	echo "PACKAGE=$(PACKAGE)"; \
