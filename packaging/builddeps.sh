@@ -56,8 +56,6 @@ done
 if dpkg-vendor --derives-from Debian; then
     apt-get -y update
     apt-get -q -y install \
-        autoconf \
-        automake \
         build-essential \
         docbook-xml \
         docbook-xsl \
@@ -65,7 +63,6 @@ if dpkg-vendor --derives-from Debian; then
         gnome-desktop-testing \
         gnupg \
         libgit2-glib-1.0-dev \
-        libtool \
         meson \
         pkg-config \
         python3 \
@@ -81,15 +78,12 @@ fi
 
 if command -v yum; then
     yum -y install \
-        autoconf \
-        automake \
         docbook-style-xsl \
         gcc \
         git \
         gnome-desktop-testing \
         gnupg2 \
         libasan \
-        libtool \
         libtsan \
         libubsan \
         libxslt \
