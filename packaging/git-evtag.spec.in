@@ -27,6 +27,7 @@ that cover the complete content.
 %autosetup
 
 %build
+# TODO: Someone who knows RPM should convert this to Meson
 env NOCONFIGURE=1 ./autogen.sh
 %configure --disable-silent-rules
 %make_build
