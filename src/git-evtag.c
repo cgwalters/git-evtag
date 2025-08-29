@@ -944,9 +944,18 @@ submain (struct EvTag *self,
   if (!command->fn)
     {
       GOptionContext *context;
+      GOptionGroup *group;
       char *help;
 
       context = option_context_new_with_commands (commands);
+
+      group = g_option_group_new ("sign", "Create a new GPG signed tag", "Create a new GPG signed tag", NULL, NULL);
+      g_option_group_add_entries (group, sign_options);
+      g_option_context_add_group (context, group);
+
+      group = g_option_group_new ("verify", "Verify a signed tag", "Verify a signed tag", NULL, NULL);
+      g_option_group_add_entries (group, verify_options);
+      g_option_context_add_group (context, group);
 
       /* This will not return for some options (e.g. --version). */
       if (option_context_parse (context, NULL, &argc, &argv, cancellable, error))
@@ -963,7 +972,7 @@ submain (struct EvTag *self,
             }
         }
 
-      help = g_option_context_get_help (context, FALSE, NULL);
+      help = g_option_context_get_help (context, TRUE, NULL);
       g_printerr ("%s", help);
 
       g_option_context_free (context);
