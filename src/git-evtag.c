@@ -974,6 +974,7 @@ submain (struct EvTag *self,
 
       help = g_option_context_get_help (context, TRUE, NULL);
       g_printerr ("%s", help);
+      g_free (help);
 
       g_option_context_free (context);
 
