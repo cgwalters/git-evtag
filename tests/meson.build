@@ -1,7 +1,7 @@
 # Copyright 2022 Simon McVittie
 # SPDX-License-Identifier: MIT
 
-insttestdir = get_option('libexecdir') / 'installed-tests'
+insttestdir = get_option('libexecdir') / 'installed-tests' / meson.project_name()
 insttestmetadir = get_option('datadir') / 'installed-tests' / meson.project_name()
 
 test_scripts = [
