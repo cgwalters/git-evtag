@@ -79,6 +79,12 @@ AC_ARG_ENABLE(installed_tests,
               [enable_installed_tests=no])
 AM_CONDITIONAL(BUILDOPT_INSTALL_TESTS, test x$enable_installed_tests = xyes)
 
+AC_ARG_WITH(default_editor,
+              [AS_HELP_STRING([--with-default-editor=""],
+                              [Default editor to use when the EDITOR environment variable is not set [default=vi]])],
+              default_editor="$withval",
+              default_editor="vi")
+
 AC_CONFIG_FILES([
         Makefile
 ])
@@ -90,4 +96,5 @@ echo "
     man pages (xsltproc):                    $enable_man
     installed tests:                         $enable_installed_tests
     Rust implementation:                     $enable_rust
+    Default editor:                          $default_editor
 "

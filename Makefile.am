@@ -22,7 +22,8 @@ privdatadir=$(pkglibdir)
 ACLOCAL_AMFLAGS += -I m4 ${ACLOCAL_FLAGS}
 AM_CPPFLAGS += -DDATADIR='"$(datadir)"' \
 	-DLIBEXECDIR='"$(libexecdir)"' \
-	-DLOCALEDIR=\"$(datadir)/locale\"
+	-DLOCALEDIR=\"$(datadir)/locale\" \
+	-DDEFAULT_EDITOR=\"$(default_editor)\"
 AM_CFLAGS += $(WARN_CFLAGS)
 
 EXTRA_DIST += meson.build

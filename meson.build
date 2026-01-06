@@ -67,6 +67,10 @@ cdata.set_quoted(
   'PACKAGE_STRING',
   '@0@ @1@'.format(meson.project_name(), meson.project_version()),
 )
+cdata.set_quoted(
+  'DEFAULT_EDITOR',
+  get_option('default_editor'),
+)
 
 foreach function : ['git_libgit2_init']
   if cc.has_function(

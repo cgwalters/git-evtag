@@ -13,6 +13,12 @@ option(
   description : 'Generate man pages',
   value : 'auto',
 )
+option(
+  'default_editor',
+  type : 'string',
+  description : 'Default editor to use when the EDITOR environment variable is not set',
+  value : 'vi',
+)
 # "Option name rust is reserved"
 option(
   'build_rust_version',

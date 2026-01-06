@@ -695,7 +695,7 @@ git_evtag_builtin_sign (struct EvTag *self, int argc, char **argv, GCancellable 
 
       editor = getenv ("EDITOR");
       if (!editor)
-        editor = "vi";
+        editor = DEFAULT_EDITOR;
 
       editor_child_argv[0] = (char*)editor;
       editor_child_argv[1] = (char*)temppath;
