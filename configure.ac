@@ -84,6 +84,7 @@ AC_ARG_WITH(default_editor,
                               [Default editor to use when the EDITOR environment variable is not set [default=vi]])],
               default_editor="$withval",
               default_editor="vi")
+AC_SUBST([default_editor])
 
 AC_CONFIG_FILES([
         Makefile
