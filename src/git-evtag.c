@@ -21,6 +21,7 @@
 #include <git2.h>
 #include <gio/gio.h>
 #include <string.h>
+#include <stdio.h>
 #include <errno.h>
 
 #if !GLIB_CHECK_VERSION(2, 70, 0)
@@ -58,6 +59,8 @@ static gboolean opt_print_only;
 static gboolean opt_no_signature;
 static gboolean opt_with_legacy_archive_tag;
 static char *opt_keyid;
+static char *opt_message;
+static char *opt_file;
 
 static GOptionEntry global_entries[] = {
   { "version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Print version information and exit", NULL },
@@ -70,6 +73,8 @@ static GOptionEntry sign_options[] = {
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Print statistics on what we're hashing", NULL },
   { "local-user", 'u', 0, G_OPTION_ARG_STRING, &opt_keyid, "Use the given GPG KEYID", "KEYID" },
   { "with-legacy-archive-tag", 'u', 0, G_OPTION_ARG_NONE, &opt_with_legacy_archive_tag, "Also append a legacy variant of the checksum using `git archive`", NULL },
+  { "message", 'm', 0, G_OPTION_ARG_STRING, &opt_message, "Use MESSAGE as tag message", "MESSAGE" },
+  { "file", 'F', 0, G_OPTION_ARG_STRING, &opt_file, "Use FILE as tag message, or '-' to read from stdin", "FILE" },
   { NULL }
 };
 
@@ -662,11 +667,44 @@ git_evtag_builtin_sign (struct EvTag *self, int argc, char **argv, GCancellable 
       GPtrArray *gittag_child_argv = g_ptr_array_new ();
       GString *buf = g_string_new ("\n\n");
       gboolean have_evtag;
+      gboolean have_message = FALSE;
 
       tmpfd = g_file_open_tmp ("git-evtag-XXXXXX.md", &temppath, error);
       if (tmpfd < 0)
         goto out;
       (void) close (tmpfd);
+
+      if (opt_message != NULL && *opt_message != '\0')
+        {
+          g_string_prepend (buf, opt_message);
+          have_message = TRUE;
+        }
+      else if (opt_file != NULL && *opt_file != '\0')
+        {
+          char *message = NULL;
+          if (g_strcmp0 (opt_file, "-") == 0)
+            {
+              g_autoptr(GString) data = g_string_new ("");
+              size_t n_read;
+              char buffer[4096];
+
+              while ((n_read = fread (buffer, 1, sizeof (buffer), stdin)) > 0)
+                g_string_append_len (data, buffer, n_read);
+
+              message = g_string_free (g_steal_pointer (&data), FALSE);
+            }
+          else
+            {
+              if (!g_file_get_contents (opt_file, &message, NULL, error))
+                goto out;
+            }
+          if (message != NULL && *message != '\0')
+            {
+              g_string_prepend (buf, message);
+              have_message = TRUE;
+            }
+          g_free (message);
+        }
 
       g_string_append_printf (buf, "# git-evtag comment: Computed checksum in %0.1fs\n",
                               (double)(elapsed_ns) / (double) G_USEC_PER_SEC);
@@ -693,16 +731,19 @@ git_evtag_builtin_sign (struct EvTag *self, int argc, char **argv, GCancellable 
         goto out;
       g_string_free (buf, TRUE);
 
-      editor = getenv ("EDITOR");
-      if (!editor)
-        editor = DEFAULT_EDITOR;
+      if (!have_message)
+        {
+          editor = getenv ("EDITOR");
+          if (!editor)
+            editor = DEFAULT_EDITOR;
 
-      editor_child_argv[0] = (char*)editor;
-      editor_child_argv[1] = (char*)temppath;
-      if (!spawn_sync_require_success (editor_child_argv, 
-                                       G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN,
-                                       error))
-        goto out;
+          editor_child_argv[0] = (char*)editor;
+          editor_child_argv[1] = (char*)temppath;
+          if (!spawn_sync_require_success (editor_child_argv,
+                                           G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN,
+                                           error))
+            goto out;
+        }
 
       if (!check_file_has_evtag (temppath, &have_evtag, error))
         goto out;
